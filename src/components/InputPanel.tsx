@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Upload, Play, RotateCcw, FileText, Zap, Brain, Settings, Plus, X } from 'lucide-react';
+import { Upload, Play, RotateCcw, FileText, Zap, Brain, Settings, Plus, X, Sparkles } from 'lucide-react';
 
 interface InputPanelProps {
   urlInput: string;
@@ -46,6 +46,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     analyzeMetaTags: true,
     detectCustomElements: true,
     analyzeFilePaths: true,
+    aiPatternDetection: true,
   });
   
   // Custom patterns
@@ -248,7 +249,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           />
         </div>
         <p className="text-xs text-gray-500 ml-6">
-          Search for specific technology patterns
+          Advanced pattern detection and source code analysis
         </p>
 
         {/* Deep Search Options */}
@@ -279,7 +280,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                   })
                 }
               />
-              <Label htmlFor="meta-tags" className="text-sm">Analyze Meta Tags</Label>
+              <Label htmlFor="meta-tags" className="text-sm">Analyze Meta Tags & Generators</Label>
             </div>
             
             <div className="flex items-center space-x-2">
@@ -293,7 +294,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                   })
                 }
               />
-              <Label htmlFor="custom-elements" className="text-sm">Detect Custom Elements</Label>
+              <Label htmlFor="custom-elements" className="text-sm">Detect Custom Elements & Attributes</Label>
             </div>
             
             <div className="flex items-center space-x-2">
@@ -307,14 +308,34 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                   })
                 }
               />
-              <Label htmlFor="file-paths" className="text-sm">Analyze File Paths</Label>
+              <Label htmlFor="file-paths" className="text-sm">Analyze File Paths & Structure</Label>
             </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="ai-patterns"
+                checked={deepSearchOptions.aiPatternDetection}
+                onCheckedChange={(checked) => 
+                  setDeepSearchOptions({
+                    ...deepSearchOptions,
+                    aiPatternDetection: checked as boolean
+                  })
+                }
+              />
+              <Label htmlFor="ai-patterns" className="text-sm flex items-center gap-2">
+                <Sparkles className="h-3 w-3 text-purple-600" />
+                AI-Generated Pattern Detection
+              </Label>
+            </div>
+            <p className="text-xs text-purple-600 ml-6">
+              AI automatically generates custom patterns based on website content
+            </p>
           </div>
         )}
 
         {/* Custom Patterns */}
         <div className="space-y-3 pt-4 border-t">
-          <Label className="text-sm font-medium">Add Search Pattern</Label>
+          <Label className="text-sm font-medium">Manual Search Patterns</Label>
           <div className="flex gap-2">
             <Input
               placeholder="Enter pattern (e.g. jquery, react)"
@@ -363,7 +384,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           />
         </div>
         <p className="text-xs text-gray-500 ml-6">
-          Use enhanced technology detection
+          GPT-4 powered comprehensive technology analysis and recommendations
         </p>
 
         {/* Action Buttons */}
