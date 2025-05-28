@@ -52,22 +52,25 @@ interface DetectedTechnology {
 
 const Analyzer = () => {
   const [urlInput, setUrlInput] = useState('');
-  const [deepSearchEnabled, setDeepSearchEnabled] = useState(false);
-  const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(false);
+  const [deepSearchEnabled, setDeepSearchEnabled] = useState(true);
+  const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(true);
   const [currentJobId, setCurrentJobId] = useState<number | null>(null);
   const [currentJob, setCurrentJob] = useState<AnalysisJob | null>(null);
   const queryClient = useQueryClient();
 
   // Mutation for starting analysis using Supabase Edge Function
   const startAnalysisMutation = useMutation({
-    mutationFn: async (data: { urls: string[]; deepSearch: boolean; aiAnalysis: boolean }) => {
-      console.log('Starting analysis with data:', data);
+    mutationFn: async (data: { urls: string[]; options: any }) => {
+      console.log('Starting real analysis with data:', data);
       
       const { data: result, error } = await supabase.functions.invoke('analyze', {
         body: {
           urls: data.urls,
-          deepSearchEnabled: data.deepSearch,
-          aiAnalysisEnabled: data.aiAnalysis,
+          deepSearchEnabled: data.options.deepSearchEnabled,
+          aiAnalysisEnabled: data.options.aiAnalysisEnabled,
+          searchMode: data.options.searchMode,
+          deepSearchOptions: data.options.deepSearchOptions,
+          customPatterns: data.options.customPatterns,
         },
       });
 
@@ -79,7 +82,7 @@ const Analyzer = () => {
       return result;
     },
     onSuccess: (data) => {
-      console.log('Analysis completed:', data);
+      console.log('Real analysis completed:', data);
       
       // Create a mock job object from the response
       const mockJob: AnalysisJob = {
@@ -97,7 +100,7 @@ const Analyzer = () => {
       
       toast({
         title: "Analysis Completed",
-        description: `Successfully analyzed ${data.totalUrls} URLs.`,
+        description: `Successfully analyzed ${data.totalUrls} URLs with real data.`,
       });
     },
     onError: (error) => {
@@ -110,11 +113,10 @@ const Analyzer = () => {
     },
   });
 
-  const handleStartAnalysis = (urls: string[]) => {
+  const handleStartAnalysis = (urls: string[], options: any) => {
     startAnalysisMutation.mutate({
       urls,
-      deepSearch: deepSearchEnabled,
-      aiAnalysis: aiAnalysisEnabled,
+      options,
     });
   };
 
@@ -146,7 +148,7 @@ const Analyzer = () => {
             </h1>
           </div>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Comprehensive web technology detection using advanced pattern matching, 
+            Real-time website technology detection using live data fetching, 
             deep source analysis, and AI-powered insights
           </p>
         </div>
@@ -157,10 +159,10 @@ const Analyzer = () => {
             <CardContent className="pt-6">
               <div className="flex items-center gap-3 mb-3">
                 <Activity className="h-6 w-6 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Pattern Detection</h3>
+                <h3 className="font-semibold text-gray-900">Live Data Fetching</h3>
               </div>
               <p className="text-sm text-gray-600">
-                Advanced regex patterns for identifying frameworks, libraries, and technologies
+                Real-time analysis of website HTML, headers, and source code
               </p>
             </CardContent>
           </Card>
@@ -172,7 +174,7 @@ const Analyzer = () => {
                 <h3 className="font-semibold text-gray-900">Deep Analysis</h3>
               </div>
               <p className="text-sm text-gray-600">
-                Source code inspection, file paths, meta tags, and HTML attributes analysis
+                Advanced pattern detection, file analysis, and custom technology patterns
               </p>
             </CardContent>
           </Card>
@@ -184,7 +186,7 @@ const Analyzer = () => {
                 <h3 className="font-semibold text-gray-900">AI Insights</h3>
               </div>
               <p className="text-sm text-gray-600">
-                GPT-4 powered analysis for contextual understanding and recommendations
+                GPT-4 powered contextual analysis and technology recommendations
               </p>
             </CardContent>
           </Card>
