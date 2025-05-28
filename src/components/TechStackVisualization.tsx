@@ -20,7 +20,7 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   Radar,
-  TreeMap
+  Treemap
 } from 'recharts';
 import { 
   GitBranch, 
@@ -357,7 +357,7 @@ export const TechStackVisualization: React.FC<TechStackVisualizationProps> = ({ 
             <CardContent>
               <div className="h-96">
                 <ResponsiveContainer width="100%" height="100%">
-                  <TreeMap
+                  <Treemap
                     data={visualizationData.technologyChartData}
                     dataKey="size"
                     aspectRatio={4/3}

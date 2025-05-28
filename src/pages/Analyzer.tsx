@@ -60,11 +60,11 @@ const Analyzer = () => {
   // Query for current job status
   const { data: currentJob, isLoading: isJobLoading } = useQuery({
     queryKey: ['analysisJob', currentJobId],
-    queryFn: async () => {
+    queryFn: async (): Promise<AnalysisJob | null> => {
       if (!currentJobId) return null;
       const response = await fetch(`/api/analyze/${currentJobId}`);
       if (!response.ok) throw new Error('Failed to fetch job status');
-      return response.json() as AnalysisJob;
+      return response.json();
     },
     enabled: !!currentJobId,
     refetchInterval: currentJobId ? 2000 : false,
