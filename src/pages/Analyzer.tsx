@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
@@ -12,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Activity, Globe, Zap, Brain } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AnalysisJob {
   id: number;
@@ -55,44 +55,53 @@ const Analyzer = () => {
   const [deepSearchEnabled, setDeepSearchEnabled] = useState(false);
   const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(false);
   const [currentJobId, setCurrentJobId] = useState<number | null>(null);
+  const [currentJob, setCurrentJob] = useState<AnalysisJob | null>(null);
   const queryClient = useQueryClient();
 
-  // Query for current job status
-  const { data: currentJob, isLoading: isJobLoading } = useQuery({
-    queryKey: ['analysisJob', currentJobId],
-    queryFn: async (): Promise<AnalysisJob | null> => {
-      if (!currentJobId) return null;
-      const response = await fetch(`/api/analyze/${currentJobId}`);
-      if (!response.ok) throw new Error('Failed to fetch job status');
-      return response.json();
-    },
-    enabled: !!currentJobId,
-    refetchInterval: currentJobId ? 2000 : false,
-  });
-
-  // Mutation for starting analysis
+  // Mutation for starting analysis using Supabase Edge Function
   const startAnalysisMutation = useMutation({
     mutationFn: async (data: { urls: string[]; deepSearch: boolean; aiAnalysis: boolean }) => {
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      console.log('Starting analysis with data:', data);
+      
+      const { data: result, error } = await supabase.functions.invoke('analyze', {
+        body: {
           urls: data.urls,
           deepSearchEnabled: data.deepSearch,
           aiAnalysisEnabled: data.aiAnalysis,
-        }),
+        },
       });
-      if (!response.ok) throw new Error('Failed to start analysis');
-      return response.json();
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message);
+      }
+
+      return result;
     },
     onSuccess: (data) => {
-      setCurrentJobId(data.jobId);
+      console.log('Analysis completed:', data);
+      
+      // Create a mock job object from the response
+      const mockJob: AnalysisJob = {
+        id: parseInt(data.jobId),
+        status: 'completed',
+        totalUrls: data.totalUrls,
+        processedUrls: data.processedUrls,
+        results: data.results,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      };
+
+      setCurrentJobId(mockJob.id);
+      setCurrentJob(mockJob);
+      
       toast({
-        title: "Analysis Started",
-        description: `Processing ${data.totalUrls} URLs. Job ID: ${data.jobId}`,
+        title: "Analysis Completed",
+        description: `Successfully analyzed ${data.totalUrls} URLs.`,
       });
     },
     onError: (error) => {
+      console.error('Analysis failed:', error);
       toast({
         title: "Analysis Failed",
         description: error.message,
@@ -112,6 +121,7 @@ const Analyzer = () => {
   const handleClearAll = () => {
     setUrlInput('');
     setCurrentJobId(null);
+    setCurrentJob(null);
     queryClient.removeQueries({ queryKey: ['analysisJob'] });
     toast({
       title: "Cleared",
@@ -119,7 +129,7 @@ const Analyzer = () => {
     });
   };
 
-  const isProcessing = currentJob?.status === 'processing' || currentJob?.status === 'pending';
+  const isProcessing = startAnalysisMutation.isPending;
   const hasResults = currentJob?.status === 'completed' && currentJob.results?.length > 0;
 
   return (
@@ -198,17 +208,22 @@ const Analyzer = () => {
 
           {/* Results Area */}
           <div className="lg:col-span-2">
-            {isProcessing && currentJob && (
+            {isProcessing && (
               <Card className="mb-6 border-blue-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                     Analysis in Progress
-                    <Badge variant="secondary">Job #{currentJob.id}</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ProgressBar job={currentJob} />
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-700">
+                        Processing your URLs...
+                      </span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             )}
