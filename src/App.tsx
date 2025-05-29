@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { DemoLimitProvider } from "@/hooks/useDemoLimit";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { SignupForm } from "@/components/auth/SignupForm";
@@ -33,52 +34,54 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Index />} />
-            
-            {/* Auth routes - only accessible when not authenticated */}
-            <Route
-              path="/auth/login"
-              element={
-                <AuthGuard requireAuth={false}>
-                  <LoginForm />
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/auth/signup"
-              element={
-                <AuthGuard requireAuth={false}>
-                  <SignupForm />
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/auth/forgot-password"
-              element={
-                <AuthGuard requireAuth={false}>
-                  <ForgotPasswordForm />
-                </AuthGuard>
-              }
-            />
-            <Route path="/auth/reset-password" element={<ResetPasswordForm />} />
-            <Route path="/auth/verify-email" element={<EmailVerificationPage />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            
-            {/* Protected routes - require authentication */}
-            <Route
-              path="/analyzer"
-              element={
-                <AuthGuard requireAuth={true}>
-                  <Analyzer />
-                </AuthGuard>
-              }
-            />
-            
-            {/* Catch-all route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <DemoLimitProvider>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Index />} />
+              
+              {/* Auth routes - only accessible when not authenticated */}
+              <Route
+                path="/auth/login"
+                element={
+                  <AuthGuard requireAuth={false}>
+                    <LoginForm />
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/auth/signup"
+                element={
+                  <AuthGuard requireAuth={false}>
+                    <SignupForm />
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/auth/forgot-password"
+                element={
+                  <AuthGuard requireAuth={false}>
+                    <ForgotPasswordForm />
+                  </AuthGuard>
+                }
+              />
+              <Route path="/auth/reset-password" element={<ResetPasswordForm />} />
+              <Route path="/auth/verify-email" element={<EmailVerificationPage />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              
+              {/* Protected routes - require authentication */}
+              <Route
+                path="/analyzer"
+                element={
+                  <AuthGuard requireAuth={true}>
+                    <Analyzer />
+                  </AuthGuard>
+                }
+              />
+              
+              {/* Catch-all route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </DemoLimitProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

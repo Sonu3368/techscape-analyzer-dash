@@ -1,21 +1,28 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Globe, Activity, Zap, Brain, ArrowRight, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useDemoLimit } from '@/hooks/useDemoLimit';
 import { UserMenu } from '@/components/UserMenu';
+import { DemoLimitModal } from '@/components/DemoLimitModal';
+import { DemoCounter } from '@/components/DemoCounter';
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { isDemoLimitReached } = useDemoLimit();
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   const handleGetStarted = () => {
     if (user) {
       navigate('/analyzer');
+    } else if (isDemoLimitReached) {
+      setShowDemoModal(true);
     } else {
-      navigate('/auth/login');
+      navigate('/analyzer');
     }
   };
 
@@ -38,6 +45,7 @@ const Index = () => {
               <UserMenu />
             ) : (
               <div className="flex items-center gap-2">
+                <DemoCounter />
                 <Link to="/auth/login">
                   <Button variant="ghost">Sign In</Button>
                 </Link>
@@ -65,12 +73,22 @@ const Index = () => {
             Discover the technology stack of any website with our advanced analysis tool. 
             Get real-time insights powered by live data fetching, deep source analysis, and AI-powered detection.
           </p>
+          
+          {/* Demo info for anonymous users */}
+          {!user && (
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <DemoCounter />
+              <span className="text-sm text-gray-500">Try 5 searches for free, then sign up for unlimited access!</span>
+            </div>
+          )}
+          
           <Button 
             onClick={handleGetStarted}
             size="lg"
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-lg px-8 py-6"
+            disabled={!user && isDemoLimitReached}
           >
-            {user ? 'Go to Analyzer' : 'Start Analyzing'}
+            {user ? 'Go to Analyzer' : isDemoLimitReached ? 'Sign Up to Continue' : 'Start Analyzing'}
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>
@@ -218,6 +236,11 @@ const Index = () => {
           </Card>
         </div>
       </div>
+
+      <DemoLimitModal 
+        open={showDemoModal} 
+        onClose={() => setShowDemoModal(false)} 
+      />
     </div>
   );
 };

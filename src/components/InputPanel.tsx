@@ -11,6 +11,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { Upload, Play, RotateCcw, FileText, Zap, Brain, Settings, Plus, X, Sparkles } from 'lucide-react';
+import { DemoCounter } from '@/components/DemoCounter';
+import { useDemoLimit } from '@/hooks/useDemoLimit';
+import { useAuth } from '@/hooks/useAuth';
 
 interface InputPanelProps {
   urlInput: string;
@@ -36,6 +39,8 @@ export const InputPanel: React.FC<InputPanelProps> = ({
   isProcessing,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  const { isDemoLimitReached, remainingDemoSearches, incrementDemoCount } = useDemoLimit();
   
   // Search mode state
   const [searchMode, setSearchMode] = useState<'basic' | 'advanced' | 'full'>('full');
@@ -124,6 +129,16 @@ export const InputPanel: React.FC<InputPanelProps> = ({
       return;
     }
 
+    // Check demo limit for unauthenticated users
+    if (!user && isDemoLimitReached) {
+      toast({
+        title: "Demo Limit Reached",
+        description: "Please sign up or log in to continue analyzing websites",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (validUrls.length > 1000) {
       toast({
         title: "Too Many URLs",
@@ -146,21 +161,31 @@ export const InputPanel: React.FC<InputPanelProps> = ({
       aiAnalysisEnabled,
       deepSearchOptions,
       customPatterns,
+      isDemo: !user,
     };
+
+    // Increment demo count for unauthenticated users
+    if (!user) {
+      incrementDemoCount();
+    }
 
     onStartAnalysis(validUrls, analysisOptions);
   };
 
   const urlCount = parseUrls(urlInput).length;
   const validUrlCount = validateUrls(parseUrls(urlInput)).length;
+  const canAnalyze = validUrlCount > 0 && (user || !isDemoLimitReached);
 
   return (
     <Card className="border-blue-200 shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-blue-600" />
-          URL Input & Configuration
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-blue-600" />
+            URL Input & Configuration
+          </CardTitle>
+          <DemoCounter />
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* URL Input */}
@@ -174,7 +199,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             className="min-h-[120px] font-mono text-sm"
-            disabled={isProcessing}
+            disabled={isProcessing || (!user && isDemoLimitReached)}
           />
           <div className="flex items-center justify-between text-sm">
             <div className="flex gap-2">
@@ -192,6 +217,16 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           </div>
         </div>
 
+        {/* Demo limit warning */}
+        {!user && remainingDemoSearches <= 2 && remainingDemoSearches > 0 && (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm text-yellow-800">
+              ⚠️ Only {remainingDemoSearches} free searches remaining. 
+              <a href="/auth/signup" className="font-medium underline ml-1">Sign up</a> for unlimited access!
+            </p>
+          </div>
+        )}
+
         {/* File Upload */}
         <div className="space-y-3">
           <Label className="text-sm font-medium">Or Upload File</Label>
@@ -201,12 +236,12 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             accept=".csv,.txt"
             onChange={handleFileUpload}
             className="hidden"
-            disabled={isProcessing}
+            disabled={isProcessing || (!user && isDemoLimitReached)}
           />
           <Button
             variant="outline"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isProcessing}
+            disabled={isProcessing || (!user && isDemoLimitReached)}
             className="w-full"
           >
             <Upload className="h-4 w-4 mr-2" />
@@ -391,7 +426,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
         <div className="flex gap-3 pt-4">
           <Button
             onClick={handleStartAnalysis}
-            disabled={isProcessing || urlCount === 0 || validUrlCount === 0}
+            disabled={isProcessing || !canAnalyze}
             className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
           >
             <Play className="h-4 w-4 mr-2" />
@@ -406,6 +441,23 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             Clear
           </Button>
         </div>
+
+        {/* Demo limit reached message */}
+        {!user && isDemoLimitReached && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+            <p className="text-sm text-red-800 mb-3">
+              🚫 You've used all 5 free demo searches. Sign up or log in for unlimited access!
+            </p>
+            <div className="flex gap-2 justify-center">
+              <Button size="sm" asChild>
+                <a href="/auth/signup">Sign Up Free</a>
+              </Button>
+              <Button size="sm" variant="outline" asChild>
+                <a href="/auth/login">Log In</a>
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
