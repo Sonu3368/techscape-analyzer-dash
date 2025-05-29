@@ -1,20 +1,22 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Globe, Activity, Zap, Brain, ArrowRight, User } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Globe, Activity, Zap, Brain, ArrowRight, User, Search, Crown } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useDemoLimit } from '@/hooks/useDemoLimit';
 import { UserMenu } from '@/components/UserMenu';
 import { DemoLimitModal } from '@/components/DemoLimitModal';
 import { DemoCounter } from '@/components/DemoCounter';
+import { FreeTechSearch } from '@/components/FreeTechSearch';
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { isDemoLimitReached } = useDemoLimit();
   const [showDemoModal, setShowDemoModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('demo');
 
   const handleGetStarted = () => {
     if (user) {
@@ -22,7 +24,7 @@ const Index = () => {
     } else if (isDemoLimitReached) {
       setShowDemoModal(true);
     } else {
-      navigate('/analyzer');
+      setActiveTab('demo');
     }
   };
 
@@ -73,27 +75,116 @@ const Index = () => {
             Discover the technology stack of any website with our advanced analysis tool. 
             Get real-time insights powered by live data fetching, deep source analysis, and AI-powered detection.
           </p>
-          
-          {/* Demo info for anonymous users */}
-          {!user && (
-            <div className="flex items-center justify-center gap-2 mb-6">
-              <DemoCounter />
-              <span className="text-sm text-gray-500">Try 5 searches for free, then sign up for unlimited access!</span>
-            </div>
-          )}
-          
-          <Button 
-            onClick={handleGetStarted}
-            size="lg"
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-lg px-8 py-6"
-            disabled={!user && isDemoLimitReached}
-          >
-            {user ? 'Go to Analyzer' : isDemoLimitReached ? 'Sign Up to Continue' : 'Start Analyzing'}
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
         </div>
 
-        {/* Features Grid */}
+        {/* Main Tabs */}
+        <div className="mb-16">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8">
+              <TabsTrigger value="demo" className="flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                Free Search
+              </TabsTrigger>
+              <TabsTrigger value="full" className="flex items-center gap-2">
+                <Crown className="h-4 w-4" />
+                Full Access
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="demo" className="space-y-6">
+              <div className="max-w-2xl mx-auto">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Try 5 Free Technology Searches</h2>
+                  <p className="text-gray-600">
+                    Analyze any website's technology stack without signing up. Get instant insights!
+                  </p>
+                </div>
+                <FreeTechSearch />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="full" className="space-y-6">
+              <div className="max-w-2xl mx-auto text-center">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Unlock Full Dashboard Access</h2>
+                <p className="text-gray-600 mb-8">
+                  Get unlimited searches, detailed analysis, historical data, and advanced features.
+                </p>
+                
+                {user ? (
+                  <Card className="border-green-200 bg-gradient-to-r from-green-50 to-blue-50">
+                    <CardContent className="pt-8 pb-8">
+                      <div className="flex items-center justify-center gap-2 mb-4">
+                        <Crown className="h-6 w-6 text-green-600" />
+                        <span className="text-lg font-semibold text-green-800">Welcome back!</span>
+                      </div>
+                      <p className="text-gray-600 mb-6">
+                        You have unlimited access to all features.
+                      </p>
+                      <Button 
+                        onClick={() => navigate('/analyzer')}
+                        size="lg"
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                      >
+                        Go to Full Analyzer
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Benefits List */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                      <div className="flex items-start gap-3 p-4 bg-white rounded-lg border">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Unlimited Searches</h4>
+                          <p className="text-sm text-gray-600">Analyze as many websites as you want</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-4 bg-white rounded-lg border">
+                        <div className="w-2 h-2 bg-indigo-600 rounded-full mt-2"></div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Detailed Reports</h4>
+                          <p className="text-sm text-gray-600">Get comprehensive technology analysis</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-4 bg-white rounded-lg border">
+                        <div className="w-2 h-2 bg-purple-600 rounded-full mt-2"></div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Historical Data</h4>
+                          <p className="text-sm text-gray-600">Track technology changes over time</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-4 bg-white rounded-lg border">
+                        <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">AI Insights</h4>
+                          <p className="text-sm text-gray-600">GPT-4 powered analysis and recommendations</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-4 justify-center">
+                      <Link to="/auth/signup">
+                        <Button size="lg" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                          Sign Up Free
+                          <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                      </Link>
+                      <Link to="/auth/login">
+                        <Button size="lg" variant="outline">
+                          Log In
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* Features Grid - keep existing content */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
           <Card className="border-blue-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
             <CardContent className="pt-6">

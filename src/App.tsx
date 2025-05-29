@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +15,8 @@ import { AuthCallback } from "@/components/auth/AuthCallback";
 import Index from "./pages/Index";
 import Analyzer from "./pages/Analyzer";
 import NotFound from "./pages/NotFound";
+import { AdminLogin } from "@/components/admin/AdminLogin";
+import { AdminDashboard } from "@/components/admin/AdminDashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,6 +68,10 @@ const App = () => (
               <Route path="/auth/reset-password" element={<ResetPasswordForm />} />
               <Route path="/auth/verify-email" element={<EmailVerificationPage />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              
+              {/* Admin routes */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
               
               {/* Protected routes - require authentication */}
               <Route
