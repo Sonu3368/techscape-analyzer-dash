@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,8 +26,11 @@ import {
   BarChart3, 
   Radar as RadarIcon, 
   Grid3X3,
-  TrendingUp
+  TrendingUp,
+  Eye
 } from 'lucide-react';
+import { TechEcosystemDashboard } from './TechEcosystemDashboard';
+import { TechnologyCategoriesDetailed } from './TechnologyCategoriesDetailed';
 
 interface DetectedTechnology {
   name: string;
@@ -182,11 +184,19 @@ export const TechStackVisualization: React.FC<TechStackVisualizationProps> = ({ 
       </div>
 
       {/* Visualization Tabs */}
-      <Tabs defaultValue="categories" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="ecosystem" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="ecosystem" className="flex items-center gap-2">
+            <Eye className="w-4 h-4" />
+            Tech Ecosystem
+          </TabsTrigger>
           <TabsTrigger value="categories" className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4" />
             Categories
+          </TabsTrigger>
+          <TabsTrigger value="detailed" className="flex items-center gap-2">
+            <Grid3X3 className="w-4 h-4" />
+            Detailed View
           </TabsTrigger>
           <TabsTrigger value="technologies" className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4" />
@@ -196,11 +206,17 @@ export const TechStackVisualization: React.FC<TechStackVisualizationProps> = ({ 
             <RadarIcon className="w-4 h-4" />
             Detection Methods
           </TabsTrigger>
-          <TabsTrigger value="ecosystem" className="flex items-center gap-2">
-            <GitBranch className="w-4 h-4" />
-            Ecosystem
-          </TabsTrigger>
         </TabsList>
+
+        {/* Tech Ecosystem Dashboard */}
+        <TabsContent value="ecosystem">
+          <TechEcosystemDashboard results={results} />
+        </TabsContent>
+
+        {/* Detailed Categories View */}
+        <TabsContent value="detailed">
+          <TechnologyCategoriesDetailed results={results} />
+        </TabsContent>
 
         {/* Category Distribution */}
         <TabsContent value="categories">
@@ -340,34 +356,6 @@ export const TechStackVisualization: React.FC<TechStackVisualizationProps> = ({ 
                     </div>
                   ))}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Technology Ecosystem TreeMap */}
-        <TabsContent value="ecosystem">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <GitBranch className="w-5 h-5 text-indigo-600" />
-                Technology Ecosystem Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-96">
-                <ResponsiveContainer width="100%" height="100%">
-                  <Treemap
-                    data={visualizationData.technologyChartData}
-                    dataKey="size"
-                    aspectRatio={4/3}
-                    stroke="#fff"
-                    fill="#3B82F6"
-                  />
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-4 text-sm text-gray-600">
-                <p>Size represents usage frequency weighted by detection confidence. Larger blocks indicate more prevalent and reliably detected technologies.</p>
               </div>
             </CardContent>
           </Card>
