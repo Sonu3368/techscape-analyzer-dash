@@ -1,19 +1,55 @@
 
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Globe, Activity, Zap, Brain, ArrowRight } from 'lucide-react';
+import { Globe, Activity, Zap, Brain, ArrowRight, User } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { UserMenu } from '@/components/UserMenu';
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
 
   const handleGetStarted = () => {
-    navigate('/analyzer');
+    if (user) {
+      navigate('/analyzer');
+    } else {
+      navigate('/auth/login');
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      {/* Header */}
+      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg">
+              <Globe className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-xl font-bold">TechStack Analyzer</span>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            {loading ? (
+              <div className="w-8 h-8 animate-pulse bg-gray-200 rounded-full" />
+            ) : user ? (
+              <UserMenu />
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link to="/auth/login">
+                  <Button variant="ghost">Sign In</Button>
+                </Link>
+                <Link to="/auth/signup">
+                  <Button>Get Started</Button>
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
       <div className="container mx-auto px-4 py-16 max-w-6xl">
         {/* Hero Section */}
         <div className="text-center mb-16">
@@ -34,7 +70,7 @@ const Index = () => {
             size="lg"
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-lg px-8 py-6"
           >
-            Start Analyzing
+            {user ? 'Go to Analyzer' : 'Start Analyzing'}
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>
@@ -175,7 +211,7 @@ const Index = () => {
                 size="lg"
                 className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
               >
-                Get Started Now
+                {user ? 'Go to Analyzer' : 'Get Started Now'}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </CardContent>
