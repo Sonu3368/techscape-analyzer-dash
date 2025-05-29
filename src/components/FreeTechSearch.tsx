@@ -9,6 +9,7 @@ import { Search, ExternalLink, AlertTriangle } from 'lucide-react';
 import { DemoCounter } from '@/components/DemoCounter';
 import { useDemoLimit } from '@/hooks/useDemoLimit';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TechResult {
   name: string;
@@ -81,11 +82,12 @@ export const FreeTechSearch = () => {
         return;
       }
 
-      // Call the demo analysis endpoint
+      // Call the demo analysis endpoint with authentication
       const response = await fetch('https://ffgbpdfpgicgucmpqdsn.supabase.co/functions/v1/demo-analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
         },
         body: JSON.stringify({ 
           url: trimmedUrl,
