@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -104,7 +103,31 @@ export const FreeTechSearch = () => {
           });
           return;
         }
-        throw new Error('Analysis failed');
+
+        // Get detailed error information
+        let errorMessage = `Server Error (${response.status} ${response.statusText})`;
+        try {
+          const errorData = await response.json();
+          if (errorData.message) {
+            errorMessage += `: ${errorData.message}`;
+          }
+        } catch (e) {
+          // If we can't parse the error response, just use the status info
+          console.error('Error parsing error response:', e);
+        }
+
+        console.error('Analysis error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: trimmedUrl
+        });
+
+        toast({
+          title: "Analysis Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        return;
       }
 
       const result = await response.json();
@@ -122,7 +145,7 @@ export const FreeTechSearch = () => {
       console.error('Analysis error:', error);
       toast({
         title: "Analysis Failed",
-        description: "Unable to analyze the website. Please try again.",
+        description: "Unable to analyze the website. Please check your connection and try again.",
         variant: "destructive",
       });
     } finally {
