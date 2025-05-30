@@ -32,147 +32,142 @@ serve(async (req) => {
 
     console.log(`Searching for corporate data: ${searchQuery}`)
 
-    // Use the correct MCA dataset ID for company information
-    const mcaDatasetId = '6176ee09-3d56-4a3b-8115-21841576b2f6'
-    const searchUrl = `https://api.data.gov.in/resource/${mcaDatasetId}?api-key=${apiKey}&format=json&filters[company_name]=${encodeURIComponent(searchQuery)}&limit=10`
-    
-    console.log(`Making request to: ${searchUrl}`)
-    
-    const searchResponse = await fetch(searchUrl)
-    
-    if (!searchResponse.ok) {
-      console.error(`Search API error: ${searchResponse.status} ${searchResponse.statusText}`)
-      const errorText = await searchResponse.text()
-      console.error(`Error response body: ${errorText}`)
-      return new Response(
-        JSON.stringify({ error: `API request failed: ${searchResponse.statusText}` }),
-        { status: searchResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    // Try multiple MCA datasets for company information
+    const mcaDatasets = [
+      '95b4c13f-4bfa-4411-8b21-fea67ca8159a', // MCA Company Master Data
+      'b5a8b1d5-a669-4fed-8e22-9ee51bc3a69c', // MCA Annual Return Data  
+      'f436b404-52e1-462b-9b4f-f64c0e96398e'  // MCA Company Details
+    ]
 
-    const searchData = await searchResponse.json()
-    console.log('Search response:', JSON.stringify(searchData, null, 2))
+    let companyData = null
+    let foundDataset = null
 
-    // Check if we have records in the response
-    if (!searchData.records || searchData.records.length === 0) {
-      // Try alternative search approaches
-      console.log('No records found with company_name filter, trying alternative search...')
-      
-      // Try searching with a more flexible approach
-      const alternativeUrl = `https://api.data.gov.in/resource/${mcaDatasetId}?api-key=${apiKey}&format=json&q=${encodeURIComponent(searchQuery)}&limit=10`
-      console.log(`Trying alternative search: ${alternativeUrl}`)
-      
-      const altResponse = await fetch(alternativeUrl)
-      if (altResponse.ok) {
-        const altData = await altResponse.json()
-        console.log('Alternative search response:', JSON.stringify(altData, null, 2))
+    // Try each dataset until we find company data
+    for (const datasetId of mcaDatasets) {
+      try {
+        console.log(`Trying dataset: ${datasetId}`)
         
-        if (altData.records && altData.records.length > 0) {
-          const companyRecord = altData.records[0]
+        // Try exact company name search first
+        let searchUrl = `https://api.data.gov.in/resource/${datasetId}?api-key=${apiKey}&format=json&filters[company_name]=${encodeURIComponent(searchQuery)}&limit=10`
+        console.log(`Making request to: ${searchUrl}`)
+        
+        let response = await fetch(searchUrl)
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log(`Dataset ${datasetId} response:`, JSON.stringify(data, null, 2))
           
-          // Transform the API data to match our interface
-          const corporateData = {
-            identity: {
-              companyName: companyRecord.company_name || companyRecord.COMPANY_NAME || searchQuery,
-              cin: companyRecord.cin || companyRecord.CIN || 'N/A',
-              registrationNumber: companyRecord.registration_number || companyRecord.REGISTRATION_NUMBER || 'N/A',
-              dateOfIncorporation: companyRecord.date_of_incorporation || companyRecord.DATE_OF_INCORPORATION || 'N/A',
-              rocCode: companyRecord.roc_code || companyRecord.ROC_CODE || 'N/A',
-              status: companyRecord.company_status || companyRecord.COMPANY_STATUS || 'Unknown',
-              classification: companyRecord.company_class || companyRecord.COMPANY_CLASS || 'N/A',
-              category: companyRecord.company_category || companyRecord.COMPANY_CATEGORY || 'N/A'
-            },
-            financial: {
-              authorizedCapital: parseFloat(companyRecord.authorized_cap || companyRecord.AUTHORIZED_CAP || '0') || 0,
-              paidUpCapital: parseFloat(companyRecord.paidup_capital || companyRecord.PAIDUP_CAPITAL || '0') || 0,
-              netWorth: 0,
-              totalAssets: 0,
-              totalLiabilities: 0,
-              revenue: 0,
-              charges: []
-            },
-            directors: [],
-            compliance: {
-              lastFilingDate: companyRecord.latest_return_date || companyRecord.LATEST_RETURN_DATE || 'N/A',
-              annualReturnStatus: (companyRecord.latest_return_date || companyRecord.LATEST_RETURN_DATE) ? 'Filed' : 'Unknown',
-              filings: []
-            },
-            contact: {
-              registeredAddress: [
-                companyRecord.registered_office_address || companyRecord.REGISTERED_OFFICE_ADDRESS,
-                companyRecord.state || companyRecord.STATE,
-                companyRecord.pincode || companyRecord.PINCODE
-              ].filter(Boolean).join(', ') || 'N/A',
-              email: companyRecord.email || companyRecord.EMAIL || 'N/A',
-              website: companyRecord.website || companyRecord.WEBSITE || 'N/A',
-              phone: companyRecord.phone || companyRecord.PHONE || 'N/A'
+          if (data.records && data.records.length > 0) {
+            companyData = data.records[0]
+            foundDataset = datasetId
+            console.log('Found company data in dataset:', datasetId)
+            break
+          }
+        }
+
+        // If no exact match, try partial search
+        searchUrl = `https://api.data.gov.in/resource/${datasetId}?api-key=${apiKey}&format=json&q=${encodeURIComponent(searchQuery)}&limit=10`
+        console.log(`Trying partial search: ${searchUrl}`)
+        
+        response = await fetch(searchUrl)
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log(`Partial search response for ${datasetId}:`, JSON.stringify(data, null, 2))
+          
+          if (data.records && data.records.length > 0) {
+            // Look for the closest match
+            const exactMatch = data.records.find(record => 
+              (record.company_name || record.COMPANY_NAME || '').toLowerCase().includes(searchQuery.toLowerCase())
+            )
+            
+            if (exactMatch) {
+              companyData = exactMatch
+              foundDataset = datasetId
+              console.log('Found partial match in dataset:', datasetId)
+              break
             }
           }
-
-          console.log('Transformed corporate data:', corporateData)
-
-          return new Response(
-            JSON.stringify(corporateData),
-            { 
-              status: 200, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          )
         }
+      } catch (error) {
+        console.error(`Error with dataset ${datasetId}:`, error)
+        continue
       }
+    }
+
+    // If no data found in MCA datasets, try a general search
+    if (!companyData) {
+      console.log('No data found in MCA datasets, trying general search...')
       
-      // If still no results, return a structured error
+      const generalSearchUrl = `https://api.data.gov.in/catalog.json?q=${encodeURIComponent(searchQuery)}&format=json&limit=10`
+      console.log(`General search: ${generalSearchUrl}`)
+      
+      try {
+        const generalResponse = await fetch(generalSearchUrl)
+        if (generalResponse.ok) {
+          const generalData = await generalResponse.json()
+          console.log('General search results:', JSON.stringify(generalData, null, 2))
+        }
+      } catch (error) {
+        console.error('General search error:', error)
+      }
+
       return new Response(
         JSON.stringify({ 
           error: 'No company found with that name or CIN',
-          suggestion: 'Try searching with the exact company name or CIN number'
+          suggestion: 'Please try searching with the exact company name as registered with MCA, or use the CIN number',
+          searchedQuery: searchQuery,
+          availableDatasets: mcaDatasets
         }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const companyRecord = searchData.records[0]
-    
-    // Transform the API data to match our interface
+    // Transform the found data
     const corporateData = {
       identity: {
-        companyName: companyRecord.company_name || companyRecord.COMPANY_NAME || searchQuery,
-        cin: companyRecord.cin || companyRecord.CIN || 'N/A',
-        registrationNumber: companyRecord.registration_number || companyRecord.REGISTRATION_NUMBER || 'N/A',
-        dateOfIncorporation: companyRecord.date_of_incorporation || companyRecord.DATE_OF_INCORPORATION || 'N/A',
-        rocCode: companyRecord.roc_code || companyRecord.ROC_CODE || 'N/A',
-        status: companyRecord.company_status || companyRecord.COMPANY_STATUS || 'Unknown',
-        classification: companyRecord.company_class || companyRecord.COMPANY_CLASS || 'N/A',
-        category: companyRecord.company_category || companyRecord.COMPANY_CATEGORY || 'N/A'
+        companyName: companyData.company_name || companyData.COMPANY_NAME || companyData.name || searchQuery,
+        cin: companyData.cin || companyData.CIN || companyData.corporate_identification_number || 'N/A',
+        registrationNumber: companyData.registration_number || companyData.REGISTRATION_NUMBER || companyData.llpin || 'N/A',
+        dateOfIncorporation: companyData.date_of_incorporation || companyData.DATE_OF_INCORPORATION || companyData.incorporation_date || 'N/A',
+        rocCode: companyData.roc_code || companyData.ROC_CODE || companyData.roc || 'N/A',
+        status: companyData.company_status || companyData.COMPANY_STATUS || companyData.status || 'Unknown',
+        classification: companyData.company_class || companyData.COMPANY_CLASS || companyData.classification || 'N/A',
+        category: companyData.company_category || companyData.COMPANY_CATEGORY || companyData.category || 'N/A'
       },
       financial: {
-        authorizedCapital: parseFloat(companyRecord.authorized_cap || companyRecord.AUTHORIZED_CAP || '0') || 0,
-        paidUpCapital: parseFloat(companyRecord.paidup_capital || companyRecord.PAIDUP_CAPITAL || '0') || 0,
-        netWorth: 0,
-        totalAssets: 0,
-        totalLiabilities: 0,
-        revenue: 0,
+        authorizedCapital: parseFloat(companyData.authorized_cap || companyData.AUTHORIZED_CAP || companyData.authorized_capital || '0') || 0,
+        paidUpCapital: parseFloat(companyData.paidup_capital || companyData.PAIDUP_CAPITAL || companyData.paid_up_capital || '0') || 0,
+        netWorth: parseFloat(companyData.net_worth || companyData.NET_WORTH || '0') || 0,
+        totalAssets: parseFloat(companyData.total_assets || companyData.TOTAL_ASSETS || '0') || 0,
+        totalLiabilities: parseFloat(companyData.total_liabilities || companyData.TOTAL_LIABILITIES || '0') || 0,
+        revenue: parseFloat(companyData.revenue || companyData.REVENUE || companyData.turnover || '0') || 0,
         charges: []
       },
       directors: [],
       compliance: {
-        lastFilingDate: companyRecord.latest_return_date || companyRecord.LATEST_RETURN_DATE || 'N/A',
-        annualReturnStatus: (companyRecord.latest_return_date || companyRecord.LATEST_RETURN_DATE) ? 'Filed' : 'Unknown',
+        lastFilingDate: companyData.latest_return_date || companyData.LATEST_RETURN_DATE || companyData.last_agm_date || 'N/A',
+        annualReturnStatus: (companyData.latest_return_date || companyData.LATEST_RETURN_DATE || companyData.last_agm_date) ? 'Filed' : 'Unknown',
         filings: []
       },
       contact: {
         registeredAddress: [
-          companyRecord.registered_office_address || companyRecord.REGISTERED_OFFICE_ADDRESS,
-          companyRecord.state || companyRecord.STATE,
-          companyRecord.pincode || companyRecord.PINCODE
+          companyData.registered_office_address || companyData.REGISTERED_OFFICE_ADDRESS || companyData.address,
+          companyData.state || companyData.STATE,
+          companyData.pincode || companyData.PINCODE || companyData.pin_code
         ].filter(Boolean).join(', ') || 'N/A',
-        email: companyRecord.email || companyRecord.EMAIL || 'N/A',
-        website: companyRecord.website || companyRecord.WEBSITE || 'N/A',
-        phone: companyRecord.phone || companyRecord.PHONE || 'N/A'
+        email: companyData.email || companyData.EMAIL || 'N/A',
+        website: companyData.website || companyData.WEBSITE || 'N/A',
+        phone: companyData.phone || companyData.PHONE || companyData.telephone || 'N/A'
+      },
+      metadata: {
+        datasetUsed: foundDataset,
+        searchQuery: searchQuery,
+        rawData: companyData
       }
     }
 
-    console.log('Transformed corporate data:', corporateData)
+    console.log('Final transformed corporate data:', JSON.stringify(corporateData, null, 2))
 
     return new Response(
       JSON.stringify(corporateData),
