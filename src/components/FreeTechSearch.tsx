@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,6 @@ import { Search, ExternalLink, AlertTriangle } from 'lucide-react';
 import { DemoCounter } from '@/components/DemoCounter';
 import { useDemoLimit } from '@/hooks/useDemoLimit';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 
 interface TechResult {
   name: string;
@@ -82,12 +82,12 @@ export const FreeTechSearch = () => {
         return;
       }
 
-      // Call the demo analysis endpoint with authentication
+      // Call the demo analysis endpoint with the anon key
       const response = await fetch('https://ffgbpdfpgicgucmpqdsn.supabase.co/functions/v1/demo-analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmZ2JwZGZwZ2ljZ3VjbXBxZHNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MjY0NDIsImV4cCI6MjA2MzMwMjQ0Mn0.Uy4vXJRQ7nIVP8e78Mmm4w7r2LkzyqOgOOA1I3j4UUU`,
         },
         body: JSON.stringify({ 
           url: trimmedUrl,
