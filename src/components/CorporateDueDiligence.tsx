@@ -5,21 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { 
   Search, 
   Building2, 
   FileText, 
   Users, 
   DollarSign, 
-  MapPin, 
-  Calendar,
+  MapPin,
   ExternalLink,
   TrendingUp,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  Loader2
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface CorporateData {
   identity: {
@@ -28,7 +28,7 @@ interface CorporateData {
     registrationNumber: string;
     dateOfIncorporation: string;
     rocCode: string;
-    status: 'Active' | 'Dormant' | 'Struck Off';
+    status: 'Active' | 'Dormant' | 'Struck Off' | 'Unknown';
     classification: string;
     category: string;
   };
@@ -57,7 +57,7 @@ interface CorporateData {
   }>;
   compliance: {
     lastFilingDate: string;
-    annualReturnStatus: 'Filed' | 'Pending' | 'Overdue';
+    annualReturnStatus: 'Filed' | 'Pending' | 'Overdue' | 'Unknown';
     filings: Array<{
       type: string;
       date: string;
@@ -76,96 +76,55 @@ export const CorporateDueDiligence = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [corporateData, setCorporateData] = useState<CorporateData | null>(null);
-
-  // Mock data for demonstration
-  const mockCorporateData: CorporateData = {
-    identity: {
-      companyName: 'Tech Innovations Private Limited',
-      cin: 'U72900KA2015PTC123456',
-      registrationNumber: 'ROC-BANGALORE-123456',
-      dateOfIncorporation: '2015-03-15',
-      rocCode: 'ROC-BANGALORE',
-      status: 'Active',
-      classification: 'Private Company',
-      category: 'Company Limited by Shares'
-    },
-    financial: {
-      authorizedCapital: 10000000,
-      paidUpCapital: 8500000,
-      netWorth: 15000000,
-      totalAssets: 25000000,
-      totalLiabilities: 10000000,
-      revenue: 50000000,
-      charges: [
-        {
-          id: 'CHG001',
-          amount: 5000000,
-          chargeHolder: 'State Bank of India',
-          dateCreated: '2020-06-15',
-          status: 'Satisfied'
-        },
-        {
-          id: 'CHG002',
-          amount: 3000000,
-          chargeHolder: 'HDFC Bank Limited',
-          dateCreated: '2022-01-10',
-          status: 'Outstanding'
-        }
-      ]
-    },
-    directors: [
-      {
-        name: 'Rajesh Kumar Sharma',
-        din: 'DIN-12345678',
-        designation: 'Managing Director',
-        appointmentDate: '2015-03-15',
-        status: 'Current',
-        otherCompanies: 3
-      },
-      {
-        name: 'Priya Patel',
-        din: 'DIN-87654321',
-        designation: 'Executive Director',
-        appointmentDate: '2018-07-20',
-        status: 'Current',
-        otherCompanies: 1
-      },
-      {
-        name: 'Amit Singh',
-        din: 'DIN-11223344',
-        designation: 'Non-Executive Director',
-        appointmentDate: '2016-01-10',
-        status: 'Ceased',
-        otherCompanies: 0
-      }
-    ],
-    compliance: {
-      lastFilingDate: '2024-03-31',
-      annualReturnStatus: 'Filed',
-      filings: [
-        { type: 'Annual Return (MGT-7)', date: '2024-03-31', status: 'Filed' },
-        { type: 'Financial Statement (AOC-4)', date: '2024-03-31', status: 'Filed' },
-        { type: 'Board Resolution', date: '2024-02-15', status: 'Filed' },
-        { type: 'Change in Directors (DIR-12)', date: '2023-12-10', status: 'Filed' }
-      ]
-    },
-    contact: {
-      registeredAddress: '#123, Tech Park, Outer Ring Road, Bangalore, Karnataka - 560037',
-      email: 'info@techinnovations.com',
-      website: 'www.techinnovations.com',
-      phone: '+91-80-12345678'
-    }
-  };
+  const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim()) {
+      toast({
+        title: "Search Query Required",
+        description: "Please enter a company name or CIN to search",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setIsSearching(true);
-    // Simulate API call
-    setTimeout(() => {
-      setCorporateData(mockCorporateData);
+    setError(null);
+    
+    try {
+      console.log('Searching for:', searchQuery);
+      
+      const { data, error: functionError } = await supabase.functions.invoke('corporate-data', {
+        body: { searchQuery: searchQuery.trim() }
+      });
+
+      if (functionError) {
+        console.error('Function error:', functionError);
+        throw new Error(functionError.message || 'Failed to fetch corporate data');
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setCorporateData(data);
+      toast({
+        title: "Company Found",
+        description: `Successfully loaded data for ${data.identity.companyName}`,
+      });
+
+    } catch (error) {
+      console.error('Search error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch corporate data';
+      setError(errorMessage);
+      toast({
+        title: "Search Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
       setIsSearching(false);
-    }, 1500);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -177,10 +136,12 @@ export const CorporateDueDiligence = () => {
         return 'bg-green-100 text-green-800 border-green-200';
       case 'pending':
       case 'outstanding':
+      case 'unknown':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'dormant':
       case 'overdue':
       case 'ceased':
+      case 'struck off':
         return 'bg-red-100 text-red-800 border-red-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
@@ -188,6 +149,7 @@ export const CorporateDueDiligence = () => {
   };
 
   const formatCurrency = (amount: number) => {
+    if (amount === 0) return 'N/A';
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
@@ -202,7 +164,7 @@ export const CorporateDueDiligence = () => {
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Corporate Due Diligence</h1>
         <p className="text-gray-600">
-          Comprehensive corporate intelligence for informed decision making
+          Real-time corporate intelligence powered by data.gov.in
         </p>
       </div>
 
@@ -217,26 +179,49 @@ export const CorporateDueDiligence = () => {
         <CardContent>
           <div className="flex gap-4">
             <Input
-              placeholder="Enter Company Name or CIN (e.g., U72900KA2015PTC123456)"
+              placeholder="Enter Company Name or CIN (e.g., RELIANCE INDUSTRIES LIMITED)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               className="flex-1"
+              disabled={isSearching}
             />
             <Button 
               onClick={handleSearch} 
               disabled={isSearching || !searchQuery.trim()}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              {isSearching ? 'Searching...' : 'Search'}
-              <Search className="ml-2 h-4 w-4" />
+              {isSearching ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Searching...
+                </>
+              ) : (
+                <>
+                  Search
+                  <Search className="ml-2 h-4 w-4" />
+                </>
+              )}
             </Button>
           </div>
           <p className="text-sm text-gray-500 mt-2">
-            Search by company name, CIN, or registration number to access comprehensive corporate data
+            Search by company name or CIN to access real corporate data from MCA records
           </p>
         </CardContent>
       </Card>
+
+      {/* Error Display */}
+      {error && (
+        <Card className="border-red-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-red-800">
+              <AlertTriangle className="h-5 w-5" />
+              <span className="font-medium">Search Error</span>
+            </div>
+            <p className="text-red-600 mt-2">{error}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Results Section */}
       {corporateData && (
@@ -290,7 +275,7 @@ export const CorporateDueDiligence = () => {
                     </div>
                     <div>
                       <label className="text-sm font-semibold text-gray-700">Date of Incorporation</label>
-                      <p className="text-gray-900">{new Date(corporateData.identity.dateOfIncorporation).toLocaleDateString()}</p>
+                      <p className="text-gray-900">{corporateData.identity.dateOfIncorporation}</p>
                     </div>
                     <div>
                       <label className="text-sm font-semibold text-gray-700">ROC Code</label>
@@ -317,84 +302,40 @@ export const CorporateDueDiligence = () => {
 
             {/* Financial Overview Tab */}
             <TabsContent value="financial">
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <DollarSign className="h-5 w-5" />
-                      Financial Overview
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <p className="text-sm text-gray-600">Authorized Capital</p>
-                        <p className="text-xl font-bold text-blue-600">
-                          {formatCurrency(corporateData.financial.authorizedCapital)}
-                        </p>
-                      </div>
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <p className="text-sm text-gray-600">Paid-up Capital</p>
-                        <p className="text-xl font-bold text-green-600">
-                          {formatCurrency(corporateData.financial.paidUpCapital)}
-                        </p>
-                      </div>
-                      <div className="text-center p-4 bg-purple-50 rounded-lg">
-                        <p className="text-sm text-gray-600">Net Worth</p>
-                        <p className="text-xl font-bold text-purple-600">
-                          {formatCurrency(corporateData.financial.netWorth)}
-                        </p>
-                      </div>
-                      <div className="text-center p-4 bg-orange-50 rounded-lg">
-                        <p className="text-sm text-gray-600">Total Assets</p>
-                        <p className="text-xl font-bold text-orange-600">
-                          {formatCurrency(corporateData.financial.totalAssets)}
-                        </p>
-                      </div>
-                      <div className="text-center p-4 bg-red-50 rounded-lg">
-                        <p className="text-sm text-gray-600">Total Liabilities</p>
-                        <p className="text-xl font-bold text-red-600">
-                          {formatCurrency(corporateData.financial.totalLiabilities)}
-                        </p>
-                      </div>
-                      <div className="text-center p-4 bg-indigo-50 rounded-lg">
-                        <p className="text-sm text-gray-600">Annual Revenue</p>
-                        <p className="text-xl font-bold text-indigo-600">
-                          {formatCurrency(corporateData.financial.revenue)}
-                        </p>
-                      </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Financial Overview
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-gray-600">Authorized Capital</p>
+                      <p className="text-xl font-bold text-blue-600">
+                        {formatCurrency(corporateData.financial.authorizedCapital)}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-
-                {/* Charges/Mortgages */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5" />
-                      Charges & Mortgages
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {corporateData.financial.charges.map((charge, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-semibold">{charge.chargeHolder}</p>
-                            <p className="text-sm text-gray-600">Created: {new Date(charge.dateCreated).toLocaleDateString()}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold">{formatCurrency(charge.amount)}</p>
-                            <Badge className={getStatusColor(charge.status)}>
-                              {charge.status}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <p className="text-sm text-gray-600">Paid-up Capital</p>
+                      <p className="text-xl font-bold text-green-600">
+                        {formatCurrency(corporateData.financial.paidUpCapital)}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
+                  
+                  {corporateData.financial.authorizedCapital === 0 && corporateData.financial.paidUpCapital === 0 && (
+                    <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        <AlertTriangle className="h-4 w-4 inline mr-2" />
+                        Financial data may not be available in the basic MCA dataset. 
+                        Additional financial details would require separate API calls or premium data access.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* Directors Tab */}
@@ -407,33 +348,12 @@ export const CorporateDueDiligence = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {corporateData.directors.map((director, index) => (
-                      <div key={index} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold text-lg">{director.name}</h3>
-                              <Badge className={getStatusColor(director.status)}>
-                                {director.status}
-                              </Badge>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                              <p><span className="font-medium">DIN:</span> {director.din}</p>
-                              <p><span className="font-medium">Designation:</span> {director.designation}</p>
-                              <p><span className="font-medium">Appointment Date:</span> {new Date(director.appointmentDate).toLocaleDateString()}</p>
-                              <p><span className="font-medium">Other Companies:</span> {director.otherCompanies}</p>
-                            </div>
-                          </div>
-                          {director.otherCompanies > 0 && (
-                            <Button variant="outline" size="sm">
-                              <ExternalLink className="h-4 w-4 mr-1" />
-                              View Network
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <AlertTriangle className="h-4 w-4 inline mr-2" />
+                      Director information requires additional API calls to the MCA director dataset. 
+                      This would be implemented as a separate function for detailed directorship data.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -441,63 +361,30 @@ export const CorporateDueDiligence = () => {
 
             {/* Compliance Tab */}
             <TabsContent value="compliance">
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      Compliance Status
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
-                        <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600">Last Filing Date</p>
-                        <p className="font-semibold">{new Date(corporateData.compliance.lastFilingDate).toLocaleDateString()}</p>
-                      </div>
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <FileText className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600">Annual Return Status</p>
-                        <Badge className={getStatusColor(corporateData.compliance.annualReturnStatus)}>
-                          {corporateData.compliance.annualReturnStatus}
-                        </Badge>
-                      </div>
-                      <div className="text-center p-4 bg-purple-50 rounded-lg">
-                        <TrendingUp className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                        <p className="text-sm text-gray-600">Total Filings</p>
-                        <p className="font-semibold">{corporateData.compliance.filings.length}</p>
-                      </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Compliance Status
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">Last Filing Date</p>
+                      <p className="font-semibold">{corporateData.compliance.lastFilingDate}</p>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Filing History</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {corporateData.compliance.filings.map((filing, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-semibold">{filing.type}</p>
-                            <p className="text-sm text-gray-600">{new Date(filing.date).toLocaleDateString()}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className={getStatusColor(filing.status)}>
-                              {filing.status}
-                            </Badge>
-                            <Button variant="outline" size="sm">
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <FileText className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">Annual Return Status</p>
+                      <Badge className={getStatusColor(corporateData.compliance.annualReturnStatus)}>
+                        {corporateData.compliance.annualReturnStatus}
+                      </Badge>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* Contact Tab */}
@@ -528,9 +415,11 @@ export const CorporateDueDiligence = () => {
                     <label className="text-sm font-semibold text-gray-700">Website</label>
                     <div className="flex items-center gap-2 mt-1">
                       <p className="text-gray-900">{corporateData.contact.website}</p>
-                      <Button variant="outline" size="sm">
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      {corporateData.contact.website !== 'N/A' && (
+                        <Button variant="outline" size="sm">
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -541,14 +430,14 @@ export const CorporateDueDiligence = () => {
       )}
 
       {/* Instructions */}
-      {!corporateData && (
+      {!corporateData && !error && (
         <Card className="border-gray-200">
           <CardContent className="pt-6">
             <div className="text-center text-gray-600">
               <Building2 className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-lg font-semibold mb-2">Start Your Corporate Intelligence Search</h3>
+              <h3 className="text-lg font-semibold mb-2">Real Corporate Intelligence Search</h3>
               <p className="mb-4">
-                Enter a company name or CIN to access comprehensive corporate data including:
+                Enter a company name or CIN to access real-time corporate data from MCA records:
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left max-w-2xl mx-auto">
                 <div className="flex items-start gap-2">
@@ -562,21 +451,21 @@ export const CorporateDueDiligence = () => {
                   <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
                   <div>
                     <p className="font-medium">Financial Overview</p>
-                    <p className="text-sm">Capital structure, charges, mortgages</p>
+                    <p className="text-sm">Authorized and paid-up capital</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
                   <div>
-                    <p className="font-medium">Directorship Network</p>
-                    <p className="text-sm">Current & past directors, DIN details</p>
+                    <p className="font-medium">Compliance Status</p>
+                    <p className="text-sm">Filing dates and return status</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
                   <div>
-                    <p className="font-medium">Compliance History</p>
-                    <p className="text-sm">Filing status, annual returns</p>
+                    <p className="font-medium">Contact Information</p>
+                    <p className="text-sm">Registered address and contact details</p>
                   </div>
                 </div>
               </div>
