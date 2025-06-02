@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +15,7 @@ import { EmailVerificationPage } from "@/components/auth/EmailVerificationPage";
 import { AuthCallback } from "@/components/auth/AuthCallback";
 import Index from "./pages/Index";
 import Analyzer from "./pages/Analyzer";
+import GSTDashboard from "./pages/GSTDashboard";
 import NotFound from "./pages/NotFound";
 import { AdminLogin } from "@/components/admin/AdminLogin";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
@@ -79,6 +81,15 @@ const App = () => (
                 element={
                   <AuthGuard requireAuth={true}>
                     <Analyzer />
+                  </AuthGuard>
+                }
+              />
+              
+              <Route
+                path="/gst-dashboard"
+                element={
+                  <AuthGuard requireAuth={true}>
+                    <GSTDashboard />
                   </AuthGuard>
                 }
               />
