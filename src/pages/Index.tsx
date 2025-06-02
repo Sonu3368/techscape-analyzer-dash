@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Globe, Search, BarChart, Building, TrendingUp, FileText, CreditCard } from "lucide-react";
-import { UserMenu } from "@/components/auth/UserMenu";
+import { UserMenu } from "@/components/UserMenu";
 
 const Index = () => {
   const navigate = useNavigate();
