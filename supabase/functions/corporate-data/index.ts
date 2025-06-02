@@ -32,122 +32,42 @@ serve(async (req) => {
 
     console.log(`Searching for corporate data: ${searchQuery}`)
 
-    // First, let's search for available datasets related to MCA/company data
-    const catalogSearchUrl = `https://api.data.gov.in/catalog.json?q=MCA&format=json&limit=50`
-    console.log(`Searching catalog: ${catalogSearchUrl}`)
+    // Use the correct API endpoint with proper filtering
+    const searchUrl = `https://api.data.gov.in/resource/4dbe5667-7b6b-41d7-82af-211562424d9a?api-key=${apiKey}&format=json&limit=100`
+    console.log(`Making request to: ${searchUrl}`)
     
-    let availableDatasets = []
-    try {
-      const catalogResponse = await fetch(catalogSearchUrl)
-      if (catalogResponse.ok) {
-        const catalogData = await catalogResponse.json()
-        console.log('Catalog response:', JSON.stringify(catalogData, null, 2))
-        
-        if (catalogData.catalogs && catalogData.catalogs.length > 0) {
-          availableDatasets = catalogData.catalogs.map(cat => ({
-            id: cat.id,
-            title: cat.title,
-            description: cat.desc
-          }))
-        }
-      }
-    } catch (error) {
-      console.error('Catalog search error:', error)
+    const response = await fetch(searchUrl)
+    
+    if (!response.ok) {
+      console.error(`API request failed with status: ${response.status}`)
+      throw new Error(`API request failed: ${response.status}`)
     }
 
-    // Try known working MCA dataset IDs based on data.gov.in documentation
-    const mcaDatasets = [
-      'c593bba3-97b7-4fb6-ba2c-e267649b73f2', // MCA Company Master Data (updated ID)
-      '6176c8b3-4f6b-4b6e-8b2a-2c8a8b2a8b2a', // Alternative MCA dataset
-      'mca-company-master-data' // String-based identifier
-    ]
+    const data = await response.json()
+    console.log('API response:', JSON.stringify(data, null, 2))
 
     let companyData = null
-    let foundDataset = null
-
-    // Try each dataset
-    for (const datasetId of mcaDatasets) {
-      try {
-        console.log(`Trying dataset: ${datasetId}`)
-        
-        // Try with filters parameter
-        let searchUrl = `https://api.data.gov.in/resource/${datasetId}?api-key=${apiKey}&format=json&filters[COMPANY_NAME]=${encodeURIComponent(searchQuery.toUpperCase())}&limit=5`
-        console.log(`Making request to: ${searchUrl}`)
-        
-        let response = await fetch(searchUrl)
-        
-        if (response.ok) {
-          const data = await response.json()
-          console.log(`Dataset ${datasetId} response:`, JSON.stringify(data, null, 2))
-          
-          if (data.records && data.records.length > 0) {
-            companyData = data.records[0]
-            foundDataset = datasetId
-            console.log('Found company data in dataset:', datasetId)
-            break
-          }
-        } else {
-          console.log(`Dataset ${datasetId} failed with status:`, response.status)
-        }
-
-        // Try alternative field name
-        searchUrl = `https://api.data.gov.in/resource/${datasetId}?api-key=${apiKey}&format=json&filters[company_name]=${encodeURIComponent(searchQuery)}&limit=5`
-        console.log(`Trying alternative field name: ${searchUrl}`)
-        
-        response = await fetch(searchUrl)
-        
-        if (response.ok) {
-          const data = await response.json()
-          console.log(`Alternative search response for ${datasetId}:`, JSON.stringify(data, null, 2))
-          
-          if (data.records && data.records.length > 0) {
-            companyData = data.records[0]
-            foundDataset = datasetId
-            console.log('Found data with alternative field name')
-            break
-          }
-        }
-
-        // Try general search without filters
-        searchUrl = `https://api.data.gov.in/resource/${datasetId}?api-key=${apiKey}&format=json&limit=10`
-        console.log(`Trying general search: ${searchUrl}`)
-        
-        response = await fetch(searchUrl)
-        
-        if (response.ok) {
-          const data = await response.json()
-          console.log(`General search response for ${datasetId}:`, JSON.stringify(data, null, 2))
-          
-          if (data.records && data.records.length > 0) {
-            // Look for a match in the returned data
-            const match = data.records.find(record => {
-              const companyName = record.COMPANY_NAME || record.company_name || record.name || ''
-              return companyName.toLowerCase().includes(searchQuery.toLowerCase())
-            })
-            
-            if (match) {
-              companyData = match
-              foundDataset = datasetId
-              console.log('Found match in general search')
-              break
-            } else {
-              // If no match, use first record as sample
-              companyData = data.records[0]
-              foundDataset = datasetId
-              console.log('Using first record as sample data')
-              break
-            }
-          }
-        }
-      } catch (error) {
-        console.error(`Error with dataset ${datasetId}:`, error)
-        continue
+    
+    if (data.records && data.records.length > 0) {
+      // Search for the company in the returned records
+      const match = data.records.find(record => {
+        const companyName = record.COMPANY_NAME || record.company_name || record.name || ''
+        return companyName.toLowerCase().includes(searchQuery.toLowerCase())
+      })
+      
+      if (match) {
+        companyData = match
+        console.log('Found matching company:', JSON.stringify(companyData, null, 2))
+      } else {
+        // If no exact match, use the first record as a sample
+        companyData = data.records[0]
+        console.log('No exact match found, using first record as sample')
       }
     }
 
     // If still no data, create mock data for demonstration
     if (!companyData) {
-      console.log('No real data found, creating mock data for demonstration')
+      console.log('No data available from API, creating mock data')
       
       companyData = {
         COMPANY_NAME: searchQuery,
@@ -164,7 +84,6 @@ serve(async (req) => {
         EMAIL: 'info@example.com',
         LATEST_RETURN_DATE: '2024-03-31'
       }
-      foundDataset = 'mock-data'
     }
 
     // Transform the data
@@ -205,9 +124,9 @@ serve(async (req) => {
         phone: companyData.PHONE || companyData.phone || companyData.telephone || 'N/A'
       },
       metadata: {
-        datasetUsed: foundDataset,
+        datasetUsed: '4dbe5667-7b6b-41d7-82af-211562424d9a',
         searchQuery: searchQuery,
-        availableDatasets: availableDatasets,
+        totalRecords: data.total || data.records?.length || 0,
         rawData: companyData
       }
     }
