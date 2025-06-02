@@ -32,7 +32,7 @@ serve(async (req) => {
 
     console.log(`Searching for corporate data: ${searchQuery}`)
 
-    // Use the correct API endpoint with proper filtering
+    // Search by CIN if the query looks like a CIN, otherwise search by company name
     const searchUrl = `https://api.data.gov.in/resource/4dbe5667-7b6b-41d7-82af-211562424d9a?api-key=${apiKey}&format=json&limit=100`
     console.log(`Making request to: ${searchUrl}`)
     
@@ -44,84 +44,73 @@ serve(async (req) => {
     }
 
     const data = await response.json()
-    console.log('API response:', JSON.stringify(data, null, 2))
+    console.log('API response structure:', JSON.stringify(data, null, 2))
 
     let companyData = null
     
     if (data.records && data.records.length > 0) {
       // Search for the company in the returned records
       const match = data.records.find(record => {
-        const companyName = record.COMPANY_NAME || record.company_name || record.name || ''
-        return companyName.toLowerCase().includes(searchQuery.toLowerCase())
+        const companyName = record.CompanyName || ''
+        const cin = record.CIN || ''
+        const query = searchQuery.toLowerCase()
+        
+        return companyName.toLowerCase().includes(query) || 
+               cin.toLowerCase() === query.toLowerCase()
       })
       
       if (match) {
         companyData = match
         console.log('Found matching company:', JSON.stringify(companyData, null, 2))
-      } else {
-        // If no exact match, use the first record as a sample
-        companyData = data.records[0]
-        console.log('No exact match found, using first record as sample')
       }
     }
 
-    // If still no data, create mock data for demonstration
     if (!companyData) {
-      console.log('No data available from API, creating mock data')
-      
-      companyData = {
-        COMPANY_NAME: searchQuery,
-        CIN: 'L74999DL2023PTC123456',
-        REGISTRATION_NUMBER: '123456',
-        DATE_OF_INCORPORATION: '2023-01-15',
-        ROC_CODE: 'RoC-Delhi',
-        COMPANY_STATUS: 'Active',
-        COMPANY_CLASS: 'Private',
-        COMPANY_CATEGORY: 'Company limited by shares',
-        AUTHORIZED_CAP: '1000000',
-        PAIDUP_CAPITAL: '100000',
-        REGISTERED_OFFICE_ADDRESS: 'Sample Address, New Delhi, Delhi',
-        EMAIL: 'info@example.com',
-        LATEST_RETURN_DATE: '2024-03-31'
-      }
+      console.log('No matching company found')
+      return new Response(
+        JSON.stringify({ 
+          error: 'Company not found',
+          message: `No company found matching "${searchQuery}"`
+        }),
+        { 
+          status: 404, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
-    // Transform the data
+    // Transform the data using correct field names from API response
     const corporateData = {
       identity: {
-        companyName: companyData.COMPANY_NAME || companyData.company_name || companyData.name || searchQuery,
-        cin: companyData.CIN || companyData.cin || companyData.corporate_identification_number || 'N/A',
-        registrationNumber: companyData.REGISTRATION_NUMBER || companyData.registration_number || companyData.llpin || 'N/A',
-        dateOfIncorporation: companyData.DATE_OF_INCORPORATION || companyData.date_of_incorporation || companyData.incorporation_date || 'N/A',
-        rocCode: companyData.ROC_CODE || companyData.roc_code || companyData.roc || 'N/A',
-        status: companyData.COMPANY_STATUS || companyData.company_status || companyData.status || 'Unknown',
-        classification: companyData.COMPANY_CLASS || companyData.company_class || companyData.classification || 'N/A',
-        category: companyData.COMPANY_CATEGORY || companyData.company_category || companyData.category || 'N/A'
+        companyName: companyData.CompanyName || 'N/A',
+        cin: companyData.CIN || 'N/A',
+        registrationNumber: companyData.LLPIN || 'N/A',
+        dateOfIncorporation: companyData.CompanyRegistrationdate_date || 'N/A',
+        rocCode: companyData.CompanyROCcode || 'N/A',
+        status: companyData.CompanyStatus || 'N/A',
+        classification: companyData.CompanyClass || 'N/A',
+        category: companyData.CompanyCategory || 'N/A'
       },
       financial: {
-        authorizedCapital: parseFloat(companyData.AUTHORIZED_CAP || companyData.authorized_cap || companyData.authorized_capital || '0') || 0,
-        paidUpCapital: parseFloat(companyData.PAIDUP_CAPITAL || companyData.paidup_capital || companyData.paid_up_capital || '0') || 0,
-        netWorth: parseFloat(companyData.NET_WORTH || companyData.net_worth || '0') || 0,
-        totalAssets: parseFloat(companyData.TOTAL_ASSETS || companyData.total_assets || '0') || 0,
-        totalLiabilities: parseFloat(companyData.TOTAL_LIABILITIES || companyData.total_liabilities || '0') || 0,
-        revenue: parseFloat(companyData.REVENUE || companyData.revenue || companyData.turnover || '0') || 0,
+        authorizedCapital: parseFloat(companyData.AuthorizedCapital || '0') || 0,
+        paidUpCapital: parseFloat(companyData.PaidupCapital || '0') || 0,
+        netWorth: 0, // Not available in this dataset
+        totalAssets: 0, // Not available in this dataset
+        totalLiabilities: 0, // Not available in this dataset
+        revenue: 0, // Not available in this dataset
         charges: []
       },
       directors: [],
       compliance: {
-        lastFilingDate: companyData.LATEST_RETURN_DATE || companyData.latest_return_date || companyData.last_agm_date || 'N/A',
-        annualReturnStatus: (companyData.LATEST_RETURN_DATE || companyData.latest_return_date || companyData.last_agm_date) ? 'Filed' : 'Unknown',
+        lastFilingDate: 'N/A', // Not available in this dataset
+        annualReturnStatus: 'N/A', // Not available in this dataset
         filings: []
       },
       contact: {
-        registeredAddress: [
-          companyData.REGISTERED_OFFICE_ADDRESS || companyData.registered_office_address || companyData.address,
-          companyData.STATE || companyData.state,
-          companyData.PINCODE || companyData.pincode || companyData.pin_code
-        ].filter(Boolean).join(', ') || 'N/A',
-        email: companyData.EMAIL || companyData.email || 'N/A',
-        website: companyData.WEBSITE || companyData.website || 'N/A',
-        phone: companyData.PHONE || companyData.phone || companyData.telephone || 'N/A'
+        registeredAddress: companyData.Registered_Office_Address || 'N/A',
+        email: 'N/A', // Not available in this dataset
+        website: 'N/A', // Not available in this dataset
+        phone: 'N/A' // Not available in this dataset
       },
       metadata: {
         datasetUsed: '4dbe5667-7b6b-41d7-82af-211562424d9a',
