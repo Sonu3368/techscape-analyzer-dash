@@ -32,36 +32,61 @@ serve(async (req) => {
 
     console.log(`Searching for corporate data: ${searchQuery}`)
 
-    // Search by CIN if the query looks like a CIN, otherwise search by company name
-    const searchUrl = `https://api.data.gov.in/resource/4dbe5667-7b6b-41d7-82af-211562424d9a?api-key=${apiKey}&format=json&limit=100`
+    // Use filters in the API call to improve search results
+    const cleanQuery = searchQuery.trim().toUpperCase()
+    let searchUrl = `https://api.data.gov.in/resource/4dbe5667-7b6b-41d7-82af-211562424d9a?api-key=${apiKey}&format=json&limit=1000`
+    
+    // If it looks like a CIN, add CIN filter
+    if (cleanQuery.match(/^[A-Z]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/)) {
+      searchUrl += `&filters[CIN]=${encodeURIComponent(cleanQuery)}`
+    } else {
+      // For company names, add a filter (though API might not support exact matching)
+      searchUrl += `&filters[CompanyName]=${encodeURIComponent(cleanQuery)}`
+    }
+    
     console.log(`Making request to: ${searchUrl}`)
     
     const response = await fetch(searchUrl)
     
     if (!response.ok) {
       console.error(`API request failed with status: ${response.status}`)
+      const errorText = await response.text()
+      console.error(`API error response: ${errorText}`)
       throw new Error(`API request failed: ${response.status}`)
     }
 
     const data = await response.json()
-    console.log('API response structure:', JSON.stringify(data, null, 2))
+    console.log('API response received, total records:', data.total || data.records?.length || 0)
 
     let companyData = null
     
     if (data.records && data.records.length > 0) {
-      // Search for the company in the returned records
+      // Enhanced search logic with better matching
       const match = data.records.find(record => {
-        const companyName = record.CompanyName || ''
-        const cin = record.CIN || ''
-        const query = searchQuery.toLowerCase()
+        const companyName = (record.CompanyName || '').toUpperCase()
+        const cin = (record.CIN || '').toUpperCase()
+        const query = cleanQuery
         
-        return companyName.toLowerCase().includes(query) || 
-               cin.toLowerCase() === query.toLowerCase()
+        // Exact CIN match
+        if (cin === query) return true
+        
+        // Exact company name match
+        if (companyName === query) return true
+        
+        // Partial company name match (contains)
+        if (companyName.includes(query) || query.includes(companyName)) return true
+        
+        return false
       })
       
       if (match) {
         companyData = match
-        console.log('Found matching company:', JSON.stringify(companyData, null, 2))
+        console.log('Found matching company:', companyData.CompanyName, companyData.CIN)
+      } else {
+        console.log('No exact match found, checking first few results:')
+        data.records.slice(0, 3).forEach((record, index) => {
+          console.log(`Record ${index + 1}: ${record.CompanyName} (${record.CIN})`)
+        })
       }
     }
 
@@ -70,7 +95,11 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'Company not found',
-          message: `No company found matching "${searchQuery}"`
+          message: `No company found matching "${searchQuery}". Please check the company name or CIN and try again.`,
+          suggestions: data.records?.slice(0, 3).map(r => ({ 
+            name: r.CompanyName, 
+            cin: r.CIN 
+          })) || []
         }),
         { 
           status: 404, 
@@ -100,7 +129,7 @@ serve(async (req) => {
         revenue: 0, // Not available in this dataset
         charges: []
       },
-      directors: [],
+      directors: [], // Directors data requires separate MCA API calls - see note below
       compliance: {
         lastFilingDate: 'N/A', // Not available in this dataset
         annualReturnStatus: 'N/A', // Not available in this dataset
@@ -116,11 +145,12 @@ serve(async (req) => {
         datasetUsed: '4dbe5667-7b6b-41d7-82af-211562424d9a',
         searchQuery: searchQuery,
         totalRecords: data.total || data.records?.length || 0,
-        rawData: companyData
+        rawData: companyData,
+        directorsNote: "Directors data requires separate API calls to MCA director datasets or paid MCA services"
       }
     }
 
-    console.log('Final transformed corporate data:', JSON.stringify(corporateData, null, 2))
+    console.log('Returning corporate data for:', corporateData.identity.companyName)
 
     return new Response(
       JSON.stringify(corporateData),
@@ -135,7 +165,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Failed to fetch corporate data',
-        details: error.message
+        details: error.message,
+        message: 'There was an error processing your request. Please try again.'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
