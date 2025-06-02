@@ -13,6 +13,7 @@ import { ResultsPanel } from '@/components/ResultsPanel';
 import { TechStackVisualization } from '@/components/TechStackVisualization';
 import { TechEcosystemDashboard } from '@/components/TechEcosystemDashboard';
 import { CorporateDueDiligence } from '@/components/CorporateDueDiligence';
+import { GSTDashboardTab } from '@/components/GSTDashboardTab';
 
 interface DetectedTechnology {
   name: string;
@@ -53,6 +54,7 @@ const Analyzer = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('analyzer');
+  const [corporateSubTab, setCorporateSubTab] = useState('duediligence');
   
   // State for analysis functionality
   const [urlInput, setUrlInput] = useState('');
@@ -230,7 +232,20 @@ const Analyzer = () => {
 
           {/* Corporate Due Diligence Tab */}
           <TabsContent value="corporate" className="space-y-6">
-            <CorporateDueDiligence />
+            <Tabs value={corporateSubTab} onValueChange={setCorporateSubTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 max-w-md mb-6">
+                <TabsTrigger value="duediligence">Due Diligence</TabsTrigger>
+                <TabsTrigger value="gst">GST Analytics</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="duediligence">
+                <CorporateDueDiligence />
+              </TabsContent>
+
+              <TabsContent value="gst">
+                <GSTDashboardTab />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
 
