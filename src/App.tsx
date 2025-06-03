@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -80,6 +81,15 @@ const App = () => (
                 element={
                   <AuthGuard requireAuth={true}>
                     <Analyzer />
+                  </AuthGuard>
+                }
+              />
+              
+              <Route
+                path="/gst-dashboard"
+                element={
+                  <AuthGuard requireAuth={true}>
+                    <GSTDashboard />
                   </AuthGuard>
                 }
               />

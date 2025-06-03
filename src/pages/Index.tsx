@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,9 +16,9 @@ const Index = () => {
     }
   };
 
-  const handleAnalyzer = () => {
+  const handleGSTDashboard = () => {
     if (user) {
-      navigate('/analyzer');
+      navigate('/gst-dashboard');
     } else {
       navigate('/auth/login');
     }
@@ -43,7 +42,14 @@ const Index = () => {
                     onClick={() => navigate('/analyzer')}
                     className="text-gray-700 hover:text-blue-600"
                   >
-                    Dashboard
+                    Tech Analyzer
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleGSTDashboard}
+                    className="text-gray-700 hover:text-blue-600"
+                  >
+                    GST Dashboard
                   </Button>
                   <UserMenu />
                 </>
@@ -87,16 +93,16 @@ const Index = () => {
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
             >
               <Search className="mr-2 h-5 w-5" />
-              Start Analysis
+              Start Tech Analysis
             </Button>
             <Button 
               size="lg" 
               variant="outline"
-              onClick={handleAnalyzer}
+              onClick={handleGSTDashboard}
               className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-3 text-lg"
             >
               <BarChart className="mr-2 h-5 w-5" />
-              View Dashboard
+              GST Dashboard
             </Button>
           </div>
         </div>
@@ -135,7 +141,7 @@ const Index = () => {
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
               <BarChart className="h-6 w-6 text-purple-600" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">GST Analytics</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">GST Dashboard</h3>
             <p className="text-gray-600">
               Complete GST compliance management with ITC reconciliation and filing status tracking.
             </p>
@@ -162,7 +168,7 @@ const Index = () => {
               Comprehensive GST Management
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Our integrated GST analytics provide everything you need for complete tax compliance and business insights
+              Our GST Dashboard provides everything you need for complete tax compliance and analytics
             </p>
           </div>
           
@@ -195,10 +201,10 @@ const Index = () => {
           <div className="text-center mt-12">
             <Button 
               size="lg" 
-              onClick={handleAnalyzer}
+              onClick={handleGSTDashboard}
               className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3"
             >
-              Explore GST Analytics
+              Explore GST Dashboard
             </Button>
           </div>
         </div>
