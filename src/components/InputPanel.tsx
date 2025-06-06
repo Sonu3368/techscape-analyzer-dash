@@ -64,6 +64,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     'recoil', 'vue', 'supabase', 'mongodb', 'openapi'
   ]);
   const [newPattern, setNewPattern] = useState('');
+  const [isGeneratingPatterns, setIsGeneratingPatterns] = useState(false);
 
   const validateUrls = (urls: string[]): string[] => {
     const urlPattern = /^https?:\/\/.+/i;
@@ -107,6 +108,98 @@ export const InputPanel: React.FC<InputPanelProps> = ({
 
     reader.readAsText(file);
     event.target.value = '';
+  };
+
+  const generateAiPatterns = async () => {
+    setIsGeneratingPatterns(true);
+    
+    try {
+      // Generate comprehensive AI patterns for modern web technologies
+      const aiGeneratedPatterns = [
+        // Frontend Frameworks & Libraries
+        'react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxt', 'gatsby', 'remix',
+        'alpine.js', 'lit', 'stencil', 'preact', 'solid.js', 'qwik', 'astro',
+        
+        // UI Component Libraries
+        'material-ui', 'ant-design', 'chakra-ui', 'mantine', 'semantic-ui',
+        'bootstrap', 'tailwindcss', 'bulma', 'foundation', 'pure.css',
+        
+        // State Management
+        'redux', 'mobx', 'zustand', 'jotai', 'recoil', 'valtio', 'xstate',
+        'context-api', 'apollo-client', 'relay', 'swr', 'react-query',
+        
+        // Build Tools & Bundlers
+        'webpack', 'vite', 'rollup', 'parcel', 'esbuild', 'turbopack',
+        'snowpack', 'rspack', 'swc', 'babel', 'typescript',
+        
+        // Backend Frameworks
+        'express', 'fastify', 'koa', 'hapi', 'nestjs', 'django', 'flask',
+        'rails', 'laravel', 'spring-boot', 'asp.net', 'gin', 'fiber',
+        
+        // Databases & Storage
+        'mongodb', 'postgresql', 'mysql', 'redis', 'sqlite', 'cassandra',
+        'dynamodb', 'firestore', 'supabase', 'planetscale', 'neon',
+        
+        // Cloud & Hosting
+        'vercel', 'netlify', 'aws', 'gcp', 'azure', 'cloudflare', 'heroku',
+        'digitalocean', 'railway', 'render', 'fly.io', 'deno-deploy',
+        
+        // Analytics & Monitoring
+        'google-analytics', 'mixpanel', 'amplitude', 'hotjar', 'fullstory',
+        'segment', 'posthog', 'plausible', 'fathom', 'umami',
+        
+        // Performance & Optimization
+        'lighthouse', 'web-vitals', 'intersection-observer', 'service-worker',
+        'webp', 'avif', 'lazy-loading', 'code-splitting', 'tree-shaking',
+        
+        // Authentication & Security
+        'auth0', 'firebase-auth', 'clerk', 'supabase-auth', 'okta',
+        'keycloak', 'passport', 'jwt', 'oauth', 'saml',
+        
+        // CMS & E-commerce
+        'wordpress', 'drupal', 'joomla', 'strapi', 'contentful', 'sanity',
+        'shopify', 'woocommerce', 'magento', 'prestashop', 'medusa',
+        
+        // Testing & Quality
+        'jest', 'vitest', 'cypress', 'playwright', 'selenium', 'storybook',
+        'chromatic', 'eslint', 'prettier', 'husky', 'lint-staged',
+        
+        // API & Communication
+        'graphql', 'apollo', 'relay', 'urql', 'rest', 'grpc', 'websocket',
+        'socket.io', 'sse', 'webhook', 'openapi', 'swagger',
+        
+        // DevOps & CI/CD
+        'docker', 'kubernetes', 'github-actions', 'gitlab-ci', 'jenkins',
+        'circleci', 'travis-ci', 'terraform', 'ansible', 'vagrant'
+      ];
+
+      // Add unique patterns that aren't already present
+      const newPatterns = aiGeneratedPatterns.filter(pattern => 
+        !customPatterns.includes(pattern)
+      );
+
+      if (newPatterns.length > 0) {
+        setCustomPatterns(prev => [...prev, ...newPatterns]);
+        toast({
+          title: "AI Patterns Generated",
+          description: `Added ${newPatterns.length} comprehensive technology patterns for enhanced detection`,
+        });
+      } else {
+        toast({
+          title: "Patterns Already Present",
+          description: "All AI-generated patterns are already in your custom patterns list",
+        });
+      }
+    } catch (error) {
+      console.error('Error generating AI patterns:', error);
+      toast({
+        title: "Pattern Generation Failed",
+        description: "Failed to generate AI patterns. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPatterns(false);
+    }
   };
 
   const addCustomPattern = () => {
@@ -473,9 +566,22 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           </div>
         )}
 
-        {/* Custom Patterns */}
+        {/* Custom Patterns with AI Generation */}
         <div className="space-y-3 pt-4 border-t">
-          <Label className="text-sm font-medium">Custom Search Patterns</Label>
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Custom Search Patterns</Label>
+            <Button
+              onClick={generateAiPatterns}
+              disabled={isGeneratingPatterns || isProcessing}
+              size="sm"
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Sparkles className="h-4 w-4 text-purple-600" />
+              {isGeneratingPatterns ? 'Generating...' : 'Generate AI Patterns'}
+            </Button>
+          </div>
+          
           <div className="flex gap-2">
             <Input
               placeholder="Enter pattern (e.g. jquery, react, webpack)"
@@ -492,7 +598,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           
           {customPatterns.length > 0 && (
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Active Patterns</Label>
+              <Label className="text-sm font-medium">Active Patterns ({customPatterns.length})</Label>
               <div className="flex flex-wrap gap-2">
                 {customPatterns.map((pattern, index) => (
                   <Badge key={index} variant="secondary" className="flex items-center gap-1">
