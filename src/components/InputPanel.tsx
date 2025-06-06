@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Upload, Play, RotateCcw, FileText, Zap, Brain, Settings, Plus, X, Sparkles } from 'lucide-react';
+import { Upload, Play, RotateCcw, FileText, Zap, Brain, Settings, Plus, X, Sparkles, Code, Globe, Cookie, MousePointer } from 'lucide-react';
 import { DemoCounter } from '@/components/DemoCounter';
 import { useDemoLimit } from '@/hooks/useDemoLimit';
 import { useAuth } from '@/hooks/useAuth';
@@ -45,13 +44,18 @@ export const InputPanel: React.FC<InputPanelProps> = ({
   // Search mode state
   const [searchMode, setSearchMode] = useState<'basic' | 'advanced' | 'full'>('full');
   
-  // Deep search options
+  // Enhanced deep search options
   const [deepSearchOptions, setDeepSearchOptions] = useState({
     analyzeHtmlComments: true,
     analyzeMetaTags: true,
     detectCustomElements: true,
     analyzeFilePaths: true,
     aiPatternDetection: true,
+    analyzeCssClasses: true,
+    analyzeInlineScripts: true,
+    analyzeHttpHeaders: true,
+    analyzeCookiePatterns: true,
+    detectBehavioralPatterns: true,
   });
   
   // Custom patterns
@@ -182,7 +186,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-blue-600" />
-            URL Input & Configuration
+            URL Input & Enhanced Detection
           </CardTitle>
           <DemoCounter />
         </div>
@@ -251,19 +255,19 @@ export const InputPanel: React.FC<InputPanelProps> = ({
 
         {/* Search Mode */}
         <div className="space-y-4 pt-4 border-t">
-          <Label className="text-sm font-medium">Search Mode</Label>
+          <Label className="text-sm font-medium">Detection Mode</Label>
           <RadioGroup value={searchMode} onValueChange={(value: any) => setSearchMode(value)}>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="basic" id="basic" />
-              <Label htmlFor="basic" className="text-sm">Basic (HTML only)</Label>
+              <Label htmlFor="basic" className="text-sm">Basic (HTML content only)</Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="advanced" id="advanced" />
-              <Label htmlFor="advanced" className="text-sm">Advanced (HTML, CSS & JS)</Label>
+              <Label htmlFor="advanced" className="text-sm">Advanced (HTML, CSS & JS files)</Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="full" id="full" />
-              <Label htmlFor="full" className="text-sm">Full Page (All resources)</Label>
+              <Label htmlFor="full" className="text-sm">Full Scan (All resources + headers)</Label>
             </div>
           </RadioGroup>
         </div>
@@ -273,7 +277,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           <div className="flex items-center gap-2">
             <Zap className="h-4 w-4 text-indigo-600" />
             <Label htmlFor="deep-search" className="text-sm">
-              Deep Search
+              Deep Technology Detection
             </Label>
           </div>
           <Switch
@@ -284,96 +288,197 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           />
         </div>
         <p className="text-xs text-gray-500 ml-6">
-          Advanced pattern detection and source code analysis
+          Advanced pattern detection, source code analysis, and behavioral detection
         </p>
 
-        {/* Deep Search Options */}
+        {/* Enhanced Deep Search Options */}
         {deepSearchEnabled && (
-          <div className="space-y-3 ml-6 p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="html-comments"
-                checked={deepSearchOptions.analyzeHtmlComments}
-                onCheckedChange={(checked) => 
-                  setDeepSearchOptions({
-                    ...deepSearchOptions,
-                    analyzeHtmlComments: checked as boolean
-                  })
-                }
-              />
-              <Label htmlFor="html-comments" className="text-sm">Analyze HTML Comments</Label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="meta-tags"
-                checked={deepSearchOptions.analyzeMetaTags}
-                onCheckedChange={(checked) => 
-                  setDeepSearchOptions({
-                    ...deepSearchOptions,
-                    analyzeMetaTags: checked as boolean
-                  })
-                }
-              />
-              <Label htmlFor="meta-tags" className="text-sm">Analyze Meta Tags & Generators</Label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="custom-elements"
-                checked={deepSearchOptions.detectCustomElements}
-                onCheckedChange={(checked) => 
-                  setDeepSearchOptions({
-                    ...deepSearchOptions,
-                    detectCustomElements: checked as boolean
-                  })
-                }
-              />
-              <Label htmlFor="custom-elements" className="text-sm">Detect Custom Elements & Attributes</Label>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="file-paths"
-                checked={deepSearchOptions.analyzeFilePaths}
-                onCheckedChange={(checked) => 
-                  setDeepSearchOptions({
-                    ...deepSearchOptions,
-                    analyzeFilePaths: checked as boolean
-                  })
-                }
-              />
-              <Label htmlFor="file-paths" className="text-sm">Analyze File Paths & Structure</Label>
-            </div>
+          <div className="space-y-4 ml-6 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="html-comments"
+                  checked={deepSearchOptions.analyzeHtmlComments}
+                  onCheckedChange={(checked) => 
+                    setDeepSearchOptions({
+                      ...deepSearchOptions,
+                      analyzeHtmlComments: checked as boolean
+                    })
+                  }
+                />
+                <Label htmlFor="html-comments" className="text-sm flex items-center gap-1">
+                  <Code className="h-3 w-3" />
+                  HTML Comments Analysis
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="meta-tags"
+                  checked={deepSearchOptions.analyzeMetaTags}
+                  onCheckedChange={(checked) => 
+                    setDeepSearchOptions({
+                      ...deepSearchOptions,
+                      analyzeMetaTags: checked as boolean
+                    })
+                  }
+                />
+                <Label htmlFor="meta-tags" className="text-sm flex items-center gap-1">
+                  <FileText className="h-3 w-3" />
+                  Meta Tags & Generators
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="custom-elements"
+                  checked={deepSearchOptions.detectCustomElements}
+                  onCheckedChange={(checked) => 
+                    setDeepSearchOptions({
+                      ...deepSearchOptions,
+                      detectCustomElements: checked as boolean
+                    })
+                  }
+                />
+                <Label htmlFor="custom-elements" className="text-sm flex items-center gap-1">
+                  <Settings className="h-3 w-3" />
+                  Custom Elements & Attributes
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="file-paths"
+                  checked={deepSearchOptions.analyzeFilePaths}
+                  onCheckedChange={(checked) => 
+                    setDeepSearchOptions({
+                      ...deepSearchOptions,
+                      analyzeFilePaths: checked as boolean
+                    })
+                  }
+                />
+                <Label htmlFor="file-paths" className="text-sm flex items-center gap-1">
+                  <Globe className="h-3 w-3" />
+                  File Paths & Structure
+                </Label>
+              </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="ai-patterns"
-                checked={deepSearchOptions.aiPatternDetection}
-                onCheckedChange={(checked) => 
-                  setDeepSearchOptions({
-                    ...deepSearchOptions,
-                    aiPatternDetection: checked as boolean
-                  })
-                }
-              />
-              <Label htmlFor="ai-patterns" className="text-sm flex items-center gap-2">
-                <Sparkles className="h-3 w-3 text-purple-600" />
-                AI-Generated Pattern Detection
-              </Label>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="css-classes"
+                  checked={deepSearchOptions.analyzeCssClasses}
+                  onCheckedChange={(checked) => 
+                    setDeepSearchOptions({
+                      ...deepSearchOptions,
+                      analyzeCssClasses: checked as boolean
+                    })
+                  }
+                />
+                <Label htmlFor="css-classes" className="text-sm flex items-center gap-1">
+                  <Code className="h-3 w-3" />
+                  CSS Class Patterns
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="inline-scripts"
+                  checked={deepSearchOptions.analyzeInlineScripts}
+                  onCheckedChange={(checked) => 
+                    setDeepSearchOptions({
+                      ...deepSearchOptions,
+                      analyzeInlineScripts: checked as boolean
+                    })
+                  }
+                />
+                <Label htmlFor="inline-scripts" className="text-sm flex items-center gap-1">
+                  <Code className="h-3 w-3" />
+                  Inline Scripts & Functions
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="http-headers"
+                  checked={deepSearchOptions.analyzeHttpHeaders}
+                  onCheckedChange={(checked) => 
+                    setDeepSearchOptions({
+                      ...deepSearchOptions,
+                      analyzeHttpHeaders: checked as boolean
+                    })
+                  }
+                />
+                <Label htmlFor="http-headers" className="text-sm flex items-center gap-1">
+                  <Globe className="h-3 w-3" />
+                  HTTP Headers Analysis
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="cookie-patterns"
+                  checked={deepSearchOptions.analyzeCookiePatterns}
+                  onCheckedChange={(checked) => 
+                    setDeepSearchOptions({
+                      ...deepSearchOptions,
+                      analyzeCookiePatterns: checked as boolean
+                    })
+                  }
+                />
+                <Label htmlFor="cookie-patterns" className="text-sm flex items-center gap-1">
+                  <Cookie className="h-3 w-3" />
+                  Cookie Patterns
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="behavioral-patterns"
+                  checked={deepSearchOptions.detectBehavioralPatterns}
+                  onCheckedChange={(checked) => 
+                    setDeepSearchOptions({
+                      ...deepSearchOptions,
+                      detectBehavioralPatterns: checked as boolean
+                    })
+                  }
+                />
+                <Label htmlFor="behavioral-patterns" className="text-sm flex items-center gap-1">
+                  <MousePointer className="h-3 w-3" />
+                  Behavioral Detection
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="ai-patterns"
+                  checked={deepSearchOptions.aiPatternDetection}
+                  onCheckedChange={(checked) => 
+                    setDeepSearchOptions({
+                      ...deepSearchOptions,
+                      aiPatternDetection: checked as boolean
+                    })
+                  }
+                />
+                <Label htmlFor="ai-patterns" className="text-sm flex items-center gap-2">
+                  <Sparkles className="h-3 w-3 text-purple-600" />
+                  AI Pattern Generation
+                </Label>
+              </div>
             </div>
-            <p className="text-xs text-purple-600 ml-6">
-              AI automatically generates custom patterns based on website content
-            </p>
+            
+            <div className="text-xs text-gray-600 p-2 bg-blue-50 border border-blue-200 rounded">
+              <strong>Enhanced Detection includes:</strong> Framework-specific elements, library signatures, 
+              build tool artifacts, CMS patterns, analytics tracking, CDN usage, and server technology indicators.
+            </div>
           </div>
         )}
 
         {/* Custom Patterns */}
         <div className="space-y-3 pt-4 border-t">
-          <Label className="text-sm font-medium">Manual Search Patterns</Label>
+          <Label className="text-sm font-medium">Custom Search Patterns</Label>
           <div className="flex gap-2">
             <Input
-              placeholder="Enter pattern (e.g. jquery, react)"
+              placeholder="Enter pattern (e.g. jquery, react, webpack)"
               value={newPattern}
               onChange={(e) => setNewPattern(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && addCustomPattern()}
@@ -387,7 +492,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           
           {customPatterns.length > 0 && (
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Current Patterns</Label>
+              <Label className="text-sm font-medium">Active Patterns</Label>
               <div className="flex flex-wrap gap-2">
                 {customPatterns.map((pattern, index) => (
                   <Badge key={index} variant="secondary" className="flex items-center gap-1">
@@ -408,7 +513,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           <div className="flex items-center gap-2">
             <Brain className="h-4 w-4 text-purple-600" />
             <Label htmlFor="ai-analysis" className="text-sm">
-              AI-Powered Analysis
+              AI-Powered Comprehensive Analysis
             </Label>
           </div>
           <Switch
@@ -419,7 +524,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           />
         </div>
         <p className="text-xs text-gray-500 ml-6">
-          GPT-4 powered comprehensive technology analysis and recommendations
+          GPT-4 powered deep technology analysis, architecture insights, and optimization recommendations
         </p>
 
         {/* Action Buttons */}
@@ -430,7 +535,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
           >
             <Play className="h-4 w-4 mr-2" />
-            {isProcessing ? 'Processing...' : 'Start Analysis'}
+            {isProcessing ? 'Analyzing...' : 'Start Deep Analysis'}
           </Button>
           <Button
             variant="outline"
