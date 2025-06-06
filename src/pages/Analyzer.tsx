@@ -13,6 +13,8 @@ import { ResultsPanel } from '@/components/ResultsPanel';
 import { TechStackVisualization } from '@/components/TechStackVisualization';
 import { TechEcosystemDashboard } from '@/components/TechEcosystemDashboard';
 import { CorporateDueDiligence } from '@/components/CorporateDueDiligence';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface DetectedTechnology {
   name: string;
@@ -81,56 +83,79 @@ const Analyzer = () => {
     
     setCurrentJob(newJob);
     
-    // Simulate processing (replace with actual analysis logic)
-    for (let i = 0; i < urls.length; i++) {
-      const url = urls[i];
-      
-      // Simulate analysis delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Create mock result
-      const result: AnalysisResult = {
-        url,
-        status: 'completed',
-        technologies: [
-          {
-            name: 'React',
-            category: 'Frontend Frameworks',
-            version: '18.2.0',
-            confidence: 0.95,
-            detectionMethod: 'Pattern Matching',
-            patterns: ['react', 'jsx']
+    try {
+      console.log('Starting real website analysis for URLs:', urls);
+      console.log('Analysis options:', options);
+
+      // Call the real Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('analyze', {
+        body: {
+          urls: urls,
+          deepSearchEnabled: options.deepSearchEnabled,
+          aiAnalysisEnabled: options.aiAnalysisEnabled,
+          searchMode: options.searchMode || 'full',
+          deepSearchOptions: options.deepSearchOptions || {
+            analyzeHtmlComments: true,
+            analyzeMetaTags: true,
+            detectCustomElements: true,
+            analyzeFilePaths: true,
+            aiPatternDetection: true,
+            analyzeCssClasses: true,
+            analyzeInlineScripts: true,
+            analyzeHttpHeaders: true,
+            analyzeCookiePatterns: true,
+            detectBehavioralPatterns: true,
           },
-          {
-            name: 'Tailwind CSS',
-            category: 'CSS Frameworks',
-            confidence: 0.88,
-            detectionMethod: 'CSS Class Analysis',
-            patterns: ['tw-', 'tailwind']
-          }
-        ],
-        metadata: {
-          title: `Website Analysis for ${url}`,
-          description: 'Automated technology detection',
-          responseTime: Math.floor(Math.random() * 2000) + 500
+          customPatterns: options.customPatterns || []
         }
-      };
+      });
+
+      if (error) {
+        console.error('Analysis error:', error);
+        toast({
+          title: "Analysis Failed",
+          description: error.message || "Failed to analyze websites. Please try again.",
+          variant: "destructive",
+        });
+        
+        setCurrentJob(prev => ({
+          ...prev,
+          status: 'failed'
+        }));
+        return;
+      }
+
+      console.log('Analysis completed successfully:', data);
       
-      // Update job progress
+      // Update job with real results
+      setCurrentJob({
+        id: data.jobId || Date.now(),
+        status: data.status || 'completed',
+        totalUrls: data.totalUrls || urls.length,
+        processedUrls: data.processedUrls || urls.length,
+        results: data.results || []
+      });
+
+      toast({
+        title: "Analysis Complete",
+        description: `Successfully analyzed ${data.results?.length || 0} websites with real technology detection.`,
+      });
+
+    } catch (error) {
+      console.error('Error calling analyze function:', error);
+      toast({
+        title: "Analysis Error",
+        description: "An unexpected error occurred during analysis. Please try again.",
+        variant: "destructive",
+      });
+      
       setCurrentJob(prev => ({
         ...prev,
-        processedUrls: i + 1,
-        results: [...prev.results, result]
+        status: 'failed'
       }));
+    } finally {
+      setIsProcessing(false);
     }
-    
-    // Mark job as completed
-    setCurrentJob(prev => ({
-      ...prev,
-      status: 'completed'
-    }));
-    
-    setIsProcessing(false);
   };
 
   const handleClearAll = () => {
@@ -166,7 +191,7 @@ const Analyzer = () => {
             </div>
             <span className="text-xl font-bold">TechStack Analyzer</span>
             <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
-              Pro Dashboard
+              Pro Dashboard - Real Data
             </Badge>
           </div>
           
@@ -183,7 +208,7 @@ const Analyzer = () => {
             Welcome back, {user?.user_metadata?.first_name || 'User'}!
           </h1>
           <p className="text-gray-600">
-            Analyze technology stacks, explore corporate intelligence, and gain competitive insights.
+            Analyze real technology stacks from live websites, explore corporate intelligence, and gain competitive insights.
           </p>
         </div>
 
@@ -239,25 +264,25 @@ const Analyzer = () => {
           <Card className="text-center">
             <CardContent className="pt-6">
               <div className="text-2xl font-bold text-blue-600">∞</div>
-              <p className="text-sm text-gray-600">Unlimited Searches</p>
+              <p className="text-sm text-gray-600">Unlimited Real Analysis</p>
             </CardContent>
           </Card>
           <Card className="text-center">
             <CardContent className="pt-6">
               <div className="text-2xl font-bold text-green-600">24/7</div>
-              <p className="text-sm text-gray-600">Analysis Available</p>
+              <p className="text-sm text-gray-600">Live Data Available</p>
             </CardContent>
           </Card>
           <Card className="text-center">
             <CardContent className="pt-6">
               <div className="text-2xl font-bold text-purple-600">AI</div>
-              <p className="text-sm text-gray-600">Powered Insights</p>
+              <p className="text-sm text-gray-600">Enhanced Detection</p>
             </CardContent>
           </Card>
           <Card className="text-center">
             <CardContent className="pt-6">
               <div className="text-2xl font-bold text-orange-600">Pro</div>
-              <p className="text-sm text-gray-600">Premium Features</p>
+              <p className="text-sm text-gray-600">Deep Tech Analysis</p>
             </CardContent>
           </Card>
         </div>
