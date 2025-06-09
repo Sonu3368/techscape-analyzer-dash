@@ -130,7 +130,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ job }) => {
                   <div className="flex items-center gap-2">
                     {result.status === 'completed' ? (
                       <>
-                        <Badge variant="secondary" className="flex items-center gap-1">
+                        <Badge variant="secondary\" className="flex items-center gap-1">
                           <CheckCircle className="w-3 h-3 text-green-600" />
                           {result.technologies.length} techs
                         </Badge>
