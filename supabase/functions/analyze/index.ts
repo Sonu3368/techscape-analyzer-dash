@@ -54,7 +54,7 @@ const ENHANCED_TECHNOLOGY_PATTERNS = {
     category: 'Frontend Frameworks',
     patterns: {
       scripts: ['vue.js', 'vue.min.js', 'vue@', 'vuejs'],
-      html: ['v-if', 'v-for', 'v-model', '__VUE__', 'Vue.', 'new Vue'],
+      html: ['v-if', 'v-for', 'v-model', '__VUE__', 'Vue\\.', 'new Vue'],
       headers: ['x-powered-by.*vue'],
       meta: ['generator.*vue'],
       files: ['vue-', '.vue'],
@@ -87,7 +87,7 @@ const ENHANCED_TECHNOLOGY_PATTERNS = {
     category: 'JavaScript Libraries',
     patterns: {
       scripts: ['jquery', 'jquery.min.js', 'jquery-'],
-      html: ['jQuery', '$.', '$().', 'window.jQuery'],
+      html: ['jQuery', '\\$\\.', '\\$\\(\\)\\.', 'window\\.jQuery'],
       headers: [],
       meta: [],
       files: ['jquery-', 'js/jquery'],
@@ -135,7 +135,7 @@ const ENHANCED_TECHNOLOGY_PATTERNS = {
     category: 'Frontend Frameworks',
     patterns: {
       scripts: ['_next/static', 'next.js'],
-      html: ['__NEXT_DATA__', '__next', 'Next.js'],
+      html: ['__NEXT_DATA__', '__next', 'Next\\.js'],
       headers: ['x-powered-by.*next'],
       meta: ['generator.*next'],
       files: ['_next/', '.next/'],
@@ -151,7 +151,7 @@ const ENHANCED_TECHNOLOGY_PATTERNS = {
     category: 'Frontend Frameworks',
     patterns: {
       scripts: ['_nuxt/', 'nuxt.js'],
-      html: ['__NUXT__', 'window.__NUXT__'],
+      html: ['__NUXT__', 'window\\.__NUXT__'],
       headers: ['x-powered-by.*nuxt'],
       meta: ['generator.*nuxt'],
       files: ['_nuxt/', '.nuxt/'],
@@ -181,8 +181,8 @@ const ENHANCED_TECHNOLOGY_PATTERNS = {
   'Shopify': {
     category: 'E-commerce',
     patterns: {
-      scripts: ['shopify', 'shop.js', 'Shopify.'],
-      html: ['myshopify.com', 'Shopify.theme', 'shopify-section'],
+      scripts: ['shopify', 'shop.js', 'Shopify\\.'],
+      html: ['myshopify.com', 'Shopify\\.theme', 'shopify-section'],
       headers: ['server.*shopify'],
       meta: ['generator.*shopify'],
       files: ['shopify/', 'cdn.shopify.com'],
@@ -210,7 +210,7 @@ const ENHANCED_TECHNOLOGY_PATTERNS = {
     category: 'E-commerce',
     patterns: {
       scripts: ['mage/', 'magento'],
-      html: ['mage/', 'magento', 'Mage.'],
+      html: ['mage/', 'magento', 'Mage\\.'],
       headers: [],
       meta: ['generator.*magento'],
       files: ['skin/frontend/', 'js/mage/'],
@@ -222,8 +222,8 @@ const ENHANCED_TECHNOLOGY_PATTERNS = {
   'Google Analytics': {
     category: 'Analytics & Tracking',
     patterns: {
-      scripts: ['google-analytics', 'googletagmanager', 'gtag(', 'ga('],
-      html: ['gtag(', 'ga(', 'google-analytics'],
+      scripts: ['google-analytics', 'googletagmanager', 'gtag\\(', 'ga\\('],
+      html: ['gtag\\(', 'ga\\(', 'google-analytics'],
       headers: [],
       meta: [],
       files: ['gtm.js', 'analytics.js'],
@@ -277,7 +277,7 @@ const ENHANCED_TECHNOLOGY_PATTERNS = {
     category: 'Payment Processing',
     patterns: {
       scripts: ['stripe.com', 'stripe.js'],
-      html: ['Stripe(', 'stripe-'],
+      html: ['Stripe\\(', 'stripe-'],
       headers: [],
       meta: [],
       files: [],
@@ -303,7 +303,7 @@ const ENHANCED_TECHNOLOGY_PATTERNS = {
     category: 'Content Management',
     patterns: {
       scripts: ['drupal'],
-      html: ['drupal', 'Drupal.'],
+      html: ['drupal', 'Drupal\\.'],
       headers: ['x-powered-by.*drupal', 'x-drupal-'],
       meta: ['generator.*drupal'],
       files: ['sites/default/', 'modules/'],
@@ -371,13 +371,13 @@ const SOCIAL_MEDIA_PATTERNS = {
       'facebook.net/en_US/fbds.js'
     ],
     selectors: [
-      'a[href*="facebook.com"]',
-      '.fb-like',
-      '.fb-share',
-      '.fb-comments',
-      '[class*="facebook"]'
+      'a\\[href\\*="facebook.com"\\]',
+      '\\.fb-like',
+      '\\.fb-share',
+      '\\.fb-comments',
+      '\\[class\\*="facebook"\\]'
     ],
-    pixels: ['fbq(', 'facebook-pixel', 'FB_PIXEL_ID'],
+    pixels: ['fbq\\(', 'facebook-pixel', 'FB_PIXEL_ID'],
     widgets: ['fb-like-box', 'fb-page', 'fb-comments']
   },
   google: {
@@ -388,11 +388,11 @@ const SOCIAL_MEDIA_PATTERNS = {
       'youtube.com/iframe_api'
     ],
     selectors: [
-      'iframe[src*="youtube.com"]',
-      'a[href*="youtube.com"]',
-      'a[href*="plus.google.com"]'
+      'iframe\\[src\\*="youtube.com"\\]',
+      'a\\[href\\*="youtube.com"\\]',
+      'a\\[href\\*="plus.google.com"\\]'
     ],
-    pixels: ['gtag(', 'ga(', 'google-analytics'],
+    pixels: ['gtag\\(', 'ga\\(', 'google-analytics'],
     widgets: ['youtube-player', 'g-plusone']
   },
   twitter: {
@@ -402,12 +402,12 @@ const SOCIAL_MEDIA_PATTERNS = {
       'twitter.com/widgets.js'
     ],
     selectors: [
-      'a[href*="twitter.com"]',
-      'a[href*="x.com"]',
-      '.twitter-tweet',
-      '[class*="twitter"]'
+      'a\\[href\\*="twitter.com"\\]',
+      'a\\[href\\*="x.com"\\]',
+      '\\.twitter-tweet',
+      '\\[class\\*="twitter"\\]'
     ],
-    pixels: ['twq(', 'twitter-pixel'],
+    pixels: ['twq\\(', 'twitter-pixel'],
     widgets: ['twitter-timeline', 'twitter-tweet']
   },
   linkedin: {
@@ -417,9 +417,9 @@ const SOCIAL_MEDIA_PATTERNS = {
       'snap.licdn.com'
     ],
     selectors: [
-      'a[href*="linkedin.com"]',
-      '.linkedin-share',
-      '[class*="linkedin"]'
+      'a\\[href\\*="linkedin.com"\\]',
+      '\\.linkedin-share',
+      '\\[class\\*="linkedin"\\]'
     ],
     pixels: ['_linkedin_partner_id', 'linkedin-insight'],
     widgets: ['linkedin-share']
@@ -430,9 +430,9 @@ const SOCIAL_MEDIA_PATTERNS = {
       'platform.instagram.com'
     ],
     selectors: [
-      'a[href*="instagram.com"]',
-      'blockquote[class*="instagram"]',
-      '[class*="instagram"]'
+      'a\\[href\\*="instagram.com"\\]',
+      'blockquote\\[class\\*="instagram"\\]',
+      '\\[class\\*="instagram"\\]'
     ],
     pixels: [],
     widgets: ['instagram-media']
@@ -443,10 +443,10 @@ const SOCIAL_MEDIA_PATTERNS = {
       'analytics.tiktok.com'
     ],
     selectors: [
-      'a[href*="tiktok.com"]',
-      'blockquote[class*="tiktok"]'
+      'a\\[href\\*="tiktok.com"\\]',
+      'blockquote\\[class\\*="tiktok"\\]'
     ],
-    pixels: ['ttq(', 'tiktok-pixel'],
+    pixels: ['ttq\\(', 'tiktok-pixel'],
     widgets: ['tiktok-embed']
   },
   pinterest: {
@@ -455,9 +455,9 @@ const SOCIAL_MEDIA_PATTERNS = {
       'pinterest.com/v3/pidgets'
     ],
     selectors: [
-      'a[href*="pinterest.com"]',
-      '[data-pin-do]',
-      '.pin-it'
+      'a\\[href\\*="pinterest.com"\\]',
+      '\\[data-pin-do\\]',
+      '\\.pin-it'
     ],
     pixels: [],
     widgets: ['pinterest-pin']
@@ -505,7 +505,7 @@ function detectPlatformIntegrations(platform: string, patterns: any, htmlContent
 
   // Check for tracking pixels
   patterns.pixels.forEach((pixelPattern: string) => {
-    if (htmlContent.includes(pixelPattern)) {
+    if (htmlContent.includes(pixelPattern.replace(/\\/g, ''))) {
       integrations.push({
         platform,
         type: 'pixel',
@@ -542,15 +542,19 @@ function detectPlatformIntegrations(platform: string, patterns: any, htmlContent
 
   // Check for social links and buttons
   patterns.selectors.forEach((selector: string) => {
-    const regex = new RegExp(selector.replace(/\[|\]/g, ''), 'gi');
-    const matches = htmlContent.match(regex);
-    if (matches) {
-      integrations.push({
-        platform,
-        type: 'share_button',
-        confidence: 0.7,
-        evidence: [`Social elements found: ${matches.length} matches`]
-      });
+    const regex = new RegExp(selector.replace(/\\\\/g, '\\'), 'gi');
+    try {
+      const matches = htmlContent.match(regex);
+      if (matches) {
+        integrations.push({
+          platform,
+          type: 'share_button',
+          confidence: 0.7,
+          evidence: [`Social elements found: ${matches.length} matches`]
+        });
+      }
+    } catch (error) {
+      console.log(`Regex error for ${selector}:`, error);
     }
   });
 
@@ -572,10 +576,14 @@ function detectTechnologies(
 
     // HTML content detection
     config.patterns.html.forEach(pattern => {
-      const regex = new RegExp(pattern, 'gi');
-      if (regex.test(htmlContent)) {
-        foundPatterns.push(`HTML: ${pattern}`);
-        confidence += 0.3;
+      try {
+        const regex = new RegExp(pattern, 'gi');
+        if (regex.test(htmlContent)) {
+          foundPatterns.push(`HTML: ${pattern}`);
+          confidence += 0.3;
+        }
+      } catch (error) {
+        console.log(`HTML regex error for ${pattern}:`, error);
       }
     });
 
@@ -595,42 +603,58 @@ function detectTechnologies(
     if (deepSearchEnabled) {
       config.patterns.headers.forEach(pattern => {
         Object.entries(headers).forEach(([key, value]) => {
-          const regex = new RegExp(pattern, 'gi');
-          if (regex.test(`${key}: ${value}`)) {
-            foundPatterns.push(`Header: ${key}`);
-            confidence += 0.3;
-            detectionMethod = 'Deep Pattern';
+          try {
+            const regex = new RegExp(pattern, 'gi');
+            if (regex.test(`${key}: ${value}`)) {
+              foundPatterns.push(`Header: ${key}`);
+              confidence += 0.3;
+              detectionMethod = 'Deep Pattern';
+            }
+          } catch (error) {
+            console.log(`Header regex error for ${pattern}:`, error);
           }
         });
       });
 
       // Meta tags detection
       config.patterns.meta.forEach(pattern => {
-        const regex = new RegExp(`<meta[^>]*${pattern}[^>]*>`, 'gi');
-        if (regex.test(htmlContent)) {
-          foundPatterns.push(`Meta: ${pattern}`);
-          confidence += 0.25;
-          detectionMethod = 'Deep Pattern';
+        try {
+          const regex = new RegExp(`<meta[^>]*${pattern}[^>]*>`, 'gi');
+          if (regex.test(htmlContent)) {
+            foundPatterns.push(`Meta: ${pattern}`);
+            confidence += 0.25;
+            detectionMethod = 'Deep Pattern';
+          }
+        } catch (error) {
+          console.log(`Meta regex error for ${pattern}:`, error);
         }
       });
 
       // CSS detection
       config.patterns.css.forEach(pattern => {
-        const cssRegex = new RegExp(`class="[^"]*${pattern}[^"]*"`, 'gi');
-        if (cssRegex.test(htmlContent)) {
-          foundPatterns.push(`CSS: ${pattern}`);
-          confidence += 0.2;
-          detectionMethod = 'Deep Pattern';
+        try {
+          const cssRegex = new RegExp(`class="[^"]*${pattern}[^"]*"`, 'gi');
+          if (cssRegex.test(htmlContent)) {
+            foundPatterns.push(`CSS: ${pattern}`);
+            confidence += 0.2;
+            detectionMethod = 'Deep Pattern';
+          }
+        } catch (error) {
+          console.log(`CSS regex error for ${pattern}:`, error);
         }
       });
 
       // Comments detection
       config.patterns.comments.forEach(pattern => {
-        const commentRegex = new RegExp(`<!--[^>]*${pattern}[^>]*-->`, 'gi');
-        if (commentRegex.test(htmlContent)) {
-          foundPatterns.push(`Comment: ${pattern}`);
-          confidence += 0.15;
-          detectionMethod = 'Deep Pattern';
+        try {
+          const commentRegex = new RegExp(`<!--[^>]*${pattern}[^>]*-->`, 'gi');
+          if (commentRegex.test(htmlContent)) {
+            foundPatterns.push(`Comment: ${pattern}`);
+            confidence += 0.15;
+            detectionMethod = 'Deep Pattern';
+          }
+        } catch (error) {
+          console.log(`Comment regex error for ${pattern}:`, error);
         }
       });
 
@@ -650,12 +674,16 @@ function detectTechnologies(
     let version;
     if (config.versionPatterns) {
       for (const versionPattern of config.versionPatterns) {
-        const regex = new RegExp(versionPattern, 'gi');
-        const match = htmlContent.match(regex) || scripts.join(' ').match(regex);
-        if (match && match[1]) {
-          version = match[1];
-          confidence += 0.1;
-          break;
+        try {
+          const regex = new RegExp(versionPattern, 'gi');
+          const match = htmlContent.match(regex) || scripts.join(' ').match(regex);
+          if (match && match[1]) {
+            version = match[1];
+            confidence += 0.1;
+            break;
+          }
+        } catch (error) {
+          console.log(`Version regex error for ${versionPattern}:`, error);
         }
       }
     }
