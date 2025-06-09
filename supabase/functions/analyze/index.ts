@@ -31,6 +31,336 @@ interface SocialMediaAnalysis {
   socialLoginOptions: string[];
 }
 
+// Enhanced technology detection patterns with deep search capabilities
+const ENHANCED_TECHNOLOGY_PATTERNS = {
+  'React': {
+    category: 'Frontend Frameworks',
+    patterns: {
+      scripts: ['react', 'react-dom', 'react.min.js', 'react.production.min.js'],
+      html: ['data-reactroot', '__REACT_DEVTOOLS_GLOBAL_HOOK__', 'ReactDOM'],
+      headers: ['x-powered-by.*react'],
+      meta: ['generator.*react'],
+      files: ['_next/static', 'react-scripts'],
+      css: ['react-', 'jsx-'],
+      comments: ['React', 'ReactJS', 'Created with React']
+    },
+    versionPatterns: [
+      'react@([\\d\\.]+)',
+      'react.*?([\\d\\.]+)',
+      '"react".*?"([\\d\\.]+)"'
+    ]
+  },
+  'Vue.js': {
+    category: 'Frontend Frameworks',
+    patterns: {
+      scripts: ['vue.js', 'vue.min.js', 'vue@', 'vuejs'],
+      html: ['v-if', 'v-for', 'v-model', '__VUE__', 'Vue.', 'new Vue'],
+      headers: ['x-powered-by.*vue'],
+      meta: ['generator.*vue'],
+      files: ['vue-', '.vue'],
+      css: ['vue-', 'v-'],
+      comments: ['Vue', 'VueJS', 'Built with Vue']
+    },
+    versionPatterns: [
+      'vue@([\\d\\.]+)',
+      'Vue.*?([\\d\\.]+)',
+      '"vue".*?"([\\d\\.]+)"'
+    ]
+  },
+  'Angular': {
+    category: 'Frontend Frameworks',
+    patterns: {
+      scripts: ['angular', '@angular', 'angular.min.js'],
+      html: ['ng-app', 'ng-controller', 'ng-', 'angular.module', '[ng-'],
+      headers: ['x-powered-by.*angular'],
+      meta: ['generator.*angular'],
+      files: ['angular-', '@angular/'],
+      css: ['ng-', 'angular-'],
+      comments: ['Angular', 'AngularJS']
+    },
+    versionPatterns: [
+      'angular@([\\d\\.]+)',
+      '"@angular/core".*?"([\\d\\.]+)"'
+    ]
+  },
+  'jQuery': {
+    category: 'JavaScript Libraries',
+    patterns: {
+      scripts: ['jquery', 'jquery.min.js', 'jquery-'],
+      html: ['jQuery', '$.', '$().', 'window.jQuery'],
+      headers: [],
+      meta: [],
+      files: ['jquery-', 'js/jquery'],
+      css: ['jquery-ui'],
+      comments: ['jQuery', 'Powered by jQuery']
+    },
+    versionPatterns: [
+      'jquery@([\\d\\.]+)',
+      'jquery.*?([\\d\\.]+)',
+      'jQuery.*?v([\\d\\.]+)'
+    ]
+  },
+  'Bootstrap': {
+    category: 'CSS Frameworks',
+    patterns: {
+      scripts: ['bootstrap.js', 'bootstrap.min.js'],
+      html: ['btn-primary', 'container', 'row', 'col-', 'navbar', 'card'],
+      headers: [],
+      meta: [],
+      files: ['bootstrap', 'css/bootstrap'],
+      css: ['bootstrap', 'btn-', 'col-', 'navbar-'],
+      comments: ['Bootstrap', 'Twitter Bootstrap']
+    },
+    versionPatterns: [
+      'bootstrap@([\\d\\.]+)',
+      'Bootstrap.*?v([\\d\\.]+)'
+    ]
+  },
+  'Tailwind CSS': {
+    category: 'CSS Frameworks',
+    patterns: {
+      scripts: ['tailwindcss'],
+      html: ['tw-', 'prose', 'container mx-auto', 'flex items-center'],
+      headers: [],
+      meta: [],
+      files: ['tailwind', 'tailwindcss'],
+      css: ['tailwind', '@tailwind', 'tw-'],
+      comments: ['Tailwind', 'TailwindCSS']
+    },
+    versionPatterns: [
+      'tailwindcss@([\\d\\.]+)'
+    ]
+  },
+  'Next.js': {
+    category: 'Frontend Frameworks',
+    patterns: {
+      scripts: ['_next/static', 'next.js'],
+      html: ['__NEXT_DATA__', '__next', 'Next.js'],
+      headers: ['x-powered-by.*next'],
+      meta: ['generator.*next'],
+      files: ['_next/', '.next/'],
+      css: [],
+      comments: ['Next.js', 'Built with Next']
+    },
+    versionPatterns: [
+      'next@([\\d\\.]+)',
+      '"next".*?"([\\d\\.]+)"'
+    ]
+  },
+  'Nuxt.js': {
+    category: 'Frontend Frameworks',
+    patterns: {
+      scripts: ['_nuxt/', 'nuxt.js'],
+      html: ['__NUXT__', 'window.__NUXT__'],
+      headers: ['x-powered-by.*nuxt'],
+      meta: ['generator.*nuxt'],
+      files: ['_nuxt/', '.nuxt/'],
+      css: [],
+      comments: ['Nuxt', 'NuxtJS']
+    },
+    versionPatterns: [
+      'nuxt@([\\d\\.]+)'
+    ]
+  },
+  'WordPress': {
+    category: 'Content Management',
+    patterns: {
+      scripts: ['wp-content', 'wp-includes', 'wp-admin'],
+      html: ['wp-content', 'wp-includes', 'wordpress', 'wp-json'],
+      headers: ['x-powered-by.*wordpress', 'link.*wp-json'],
+      meta: ['generator.*wordpress'],
+      files: ['wp-content/', 'wp-includes/', 'wp-admin/'],
+      css: ['wp-', 'wordpress'],
+      comments: ['WordPress', 'wp-']
+    },
+    versionPatterns: [
+      'WordPress ([\\d\\.]+)',
+      'wp-includes.*?ver=([\\d\\.]+)'
+    ]
+  },
+  'Shopify': {
+    category: 'E-commerce',
+    patterns: {
+      scripts: ['shopify', 'shop.js', 'Shopify.'],
+      html: ['myshopify.com', 'Shopify.theme', 'shopify-section'],
+      headers: ['server.*shopify'],
+      meta: ['generator.*shopify'],
+      files: ['shopify/', 'cdn.shopify.com'],
+      css: ['shopify-', 'section-'],
+      comments: ['Shopify', 'Powered by Shopify']
+    },
+    versionPatterns: []
+  },
+  'WooCommerce': {
+    category: 'E-commerce',
+    patterns: {
+      scripts: ['woocommerce', 'wc-'],
+      html: ['woocommerce', 'wc-', 'shop_table'],
+      headers: [],
+      meta: ['generator.*woocommerce'],
+      files: ['woocommerce/', 'wc-'],
+      css: ['woocommerce', 'wc-'],
+      comments: ['WooCommerce']
+    },
+    versionPatterns: [
+      'WooCommerce ([\\d\\.]+)'
+    ]
+  },
+  'Magento': {
+    category: 'E-commerce',
+    patterns: {
+      scripts: ['mage/', 'magento'],
+      html: ['mage/', 'magento', 'Mage.'],
+      headers: [],
+      meta: ['generator.*magento'],
+      files: ['skin/frontend/', 'js/mage/'],
+      css: ['magento', 'mage-'],
+      comments: ['Magento']
+    },
+    versionPatterns: []
+  },
+  'Google Analytics': {
+    category: 'Analytics & Tracking',
+    patterns: {
+      scripts: ['google-analytics', 'googletagmanager', 'gtag(', 'ga('],
+      html: ['gtag(', 'ga(', 'google-analytics'],
+      headers: [],
+      meta: [],
+      files: ['gtm.js', 'analytics.js'],
+      css: [],
+      comments: ['Google Analytics', 'GA']
+    },
+    versionPatterns: []
+  },
+  'Google Tag Manager': {
+    category: 'Analytics & Tracking',
+    patterns: {
+      scripts: ['googletagmanager.com', 'gtm.js'],
+      html: ['GTM-', 'googletagmanager'],
+      headers: [],
+      meta: [],
+      files: [],
+      css: [],
+      comments: ['Google Tag Manager', 'GTM']
+    },
+    versionPatterns: []
+  },
+  'Cloudflare': {
+    category: 'CDN',
+    patterns: {
+      scripts: ['cdnjs.cloudflare.com'],
+      html: [],
+      headers: ['cf-ray', 'server.*cloudflare'],
+      meta: [],
+      files: ['cdnjs.cloudflare.com'],
+      css: [],
+      comments: ['Cloudflare']
+    },
+    versionPatterns: []
+  },
+  'Font Awesome': {
+    category: 'Icon Libraries',
+    patterns: {
+      scripts: ['fontawesome', 'font-awesome'],
+      html: ['fa-', 'fas ', 'far ', 'fab '],
+      headers: [],
+      meta: [],
+      files: ['fontawesome', 'font-awesome'],
+      css: ['fa-', 'font-awesome'],
+      comments: ['Font Awesome']
+    },
+    versionPatterns: [
+      'fontawesome.*?([\\d\\.]+)'
+    ]
+  },
+  'Stripe': {
+    category: 'Payment Processing',
+    patterns: {
+      scripts: ['stripe.com', 'stripe.js'],
+      html: ['Stripe(', 'stripe-'],
+      headers: [],
+      meta: [],
+      files: [],
+      css: ['stripe-'],
+      comments: ['Stripe']
+    },
+    versionPatterns: []
+  },
+  'PayPal': {
+    category: 'Payment Processing',
+    patterns: {
+      scripts: ['paypal.com', 'paypal.js'],
+      html: ['paypal-', 'PayPal'],
+      headers: [],
+      meta: [],
+      files: [],
+      css: ['paypal-'],
+      comments: ['PayPal']
+    },
+    versionPatterns: []
+  },
+  'Drupal': {
+    category: 'Content Management',
+    patterns: {
+      scripts: ['drupal'],
+      html: ['drupal', 'Drupal.'],
+      headers: ['x-powered-by.*drupal', 'x-drupal-'],
+      meta: ['generator.*drupal'],
+      files: ['sites/default/', 'modules/'],
+      css: ['drupal'],
+      comments: ['Drupal']
+    },
+    versionPatterns: [
+      'Drupal ([\\d\\.]+)'
+    ]
+  },
+  'Joomla': {
+    category: 'Content Management',
+    patterns: {
+      scripts: ['joomla'],
+      html: ['joomla', 'Joomla!'],
+      headers: [],
+      meta: ['generator.*joomla'],
+      files: ['components/', 'modules/'],
+      css: ['joomla'],
+      comments: ['Joomla']
+    },
+    versionPatterns: [
+      'Joomla! ([\\d\\.]+)'
+    ]
+  },
+  'Material-UI': {
+    category: 'UI Frameworks',
+    patterns: {
+      scripts: ['material-ui', '@mui/'],
+      html: ['MuiButton', 'MuiGrid', 'makeStyles'],
+      headers: [],
+      meta: [],
+      files: [],
+      css: ['Mui', 'makeStyles'],
+      comments: ['Material-UI', 'MUI']
+    },
+    versionPatterns: [
+      '@mui/core.*?([\\d\\.]+)'
+    ]
+  },
+  'Ant Design': {
+    category: 'UI Frameworks',
+    patterns: {
+      scripts: ['antd'],
+      html: ['ant-', 'antd'],
+      headers: [],
+      meta: [],
+      files: [],
+      css: ['ant-', 'antd'],
+      comments: ['Ant Design']
+    },
+    versionPatterns: [
+      'antd.*?([\\d\\.]+)'
+    ]
+  }
+};
+
 // Social media detection patterns
 const SOCIAL_MEDIA_PATTERNS = {
   facebook: {
@@ -227,158 +557,122 @@ function detectPlatformIntegrations(platform: string, patterns: any, htmlContent
   return integrations;
 }
 
-// Technology detection patterns
-const TECHNOLOGY_PATTERNS = {
-  'React': {
-    category: 'Frontend Frameworks',
-    patterns: [
-      'react',
-      '__REACT_DEVTOOLS_GLOBAL_HOOK__',
-      'ReactDOM',
-      'data-reactroot'
-    ]
-  },
-  'Vue.js': {
-    category: 'Frontend Frameworks', 
-    patterns: [
-      'Vue',
-      'vue.js',
-      'v-if',
-      'v-for',
-      '__VUE__'
-    ]
-  },
-  'Angular': {
-    category: 'Frontend Frameworks',
-    patterns: [
-      'angular',
-      'ng-app',
-      'ng-controller',
-      'angular.module'
-    ]
-  },
-  'jQuery': {
-    category: 'JavaScript Libraries',
-    patterns: [
-      'jquery',
-      'jQuery',
-      '$.',
-      'jquery.min.js'
-    ]
-  },
-  'Bootstrap': {
-    category: 'CSS Frameworks',
-    patterns: [
-      'bootstrap',
-      'btn-primary',
-      'container-fluid',
-      'bootstrap.min.css'
-    ]
-  },
-  'Tailwind CSS': {
-    category: 'CSS Frameworks',
-    patterns: [
-      'tailwindcss',
-      'tailwind.min.css',
-      'tw-',
-      'prose'
-    ]
-  },
-  'Next.js': {
-    category: 'Frontend Frameworks',
-    patterns: [
-      '__NEXT_DATA__',
-      '_next/static',
-      'next.js',
-      '__next'
-    ]
-  },
-  'Nuxt.js': {
-    category: 'Frontend Frameworks',
-    patterns: [
-      '__NUXT__',
-      'nuxt.js',
-      '_nuxt/'
-    ]
-  },
-  'WordPress': {
-    category: 'Content Management',
-    patterns: [
-      'wp-content',
-      'wp-includes',
-      'wordpress',
-      'wp-json'
-    ]
-  },
-  'Shopify': {
-    category: 'E-commerce',
-    patterns: [
-      'shopify',
-      'myshopify.com',
-      'Shopify.theme',
-      'shop.js'
-    ]
-  },
-  'Google Analytics': {
-    category: 'Analytics & Tracking',
-    patterns: [
-      'google-analytics',
-      'googletagmanager',
-      'gtag(',
-      'ga('
-    ]
-  },
-  'Cloudflare': {
-    category: 'CDN',
-    patterns: [
-      'cloudflare',
-      'cf-ray',
-      'cdnjs.cloudflare.com'
-    ]
-  }
-};
-
-function detectTechnologies(htmlContent: string, scripts: string[], headers: Record<string, string>): DetectedTechnology[] {
+function detectTechnologies(
+  htmlContent: string, 
+  scripts: string[], 
+  headers: Record<string, string>,
+  deepSearchEnabled: boolean = true
+): DetectedTechnology[] {
   const technologies: DetectedTechnology[] = [];
 
-  Object.entries(TECHNOLOGY_PATTERNS).forEach(([techName, config]) => {
+  Object.entries(ENHANCED_TECHNOLOGY_PATTERNS).forEach(([techName, config]) => {
     const foundPatterns: string[] = [];
     let confidence = 0;
+    let detectionMethod = 'Pattern Matching';
 
-    config.patterns.forEach(pattern => {
-      if (htmlContent.toLowerCase().includes(pattern.toLowerCase())) {
-        foundPatterns.push(pattern);
+    // HTML content detection
+    config.patterns.html.forEach(pattern => {
+      const regex = new RegExp(pattern, 'gi');
+      if (regex.test(htmlContent)) {
+        foundPatterns.push(`HTML: ${pattern}`);
         confidence += 0.3;
       }
-      
-      if (scripts.some(script => script.toLowerCase().includes(pattern.toLowerCase()))) {
-        foundPatterns.push(`Script: ${pattern}`);
+    });
+
+    // Script detection
+    config.patterns.scripts.forEach(pattern => {
+      const foundScripts = scripts.filter(script => 
+        script.toLowerCase().includes(pattern.toLowerCase())
+      );
+      if (foundScripts.length > 0) {
+        foundPatterns.push(`Scripts: ${pattern}`);
         confidence += 0.4;
+        detectionMethod = 'Script Analysis';
       }
     });
 
-    // Check headers for technology indicators
-    Object.entries(headers).forEach(([key, value]) => {
-      config.patterns.forEach(pattern => {
-        if (value.toLowerCase().includes(pattern.toLowerCase())) {
-          foundPatterns.push(`Header: ${key}`);
-          confidence += 0.3;
+    // Headers detection
+    if (deepSearchEnabled) {
+      config.patterns.headers.forEach(pattern => {
+        Object.entries(headers).forEach(([key, value]) => {
+          const regex = new RegExp(pattern, 'gi');
+          if (regex.test(`${key}: ${value}`)) {
+            foundPatterns.push(`Header: ${key}`);
+            confidence += 0.3;
+            detectionMethod = 'Deep Pattern';
+          }
+        });
+      });
+
+      // Meta tags detection
+      config.patterns.meta.forEach(pattern => {
+        const regex = new RegExp(`<meta[^>]*${pattern}[^>]*>`, 'gi');
+        if (regex.test(htmlContent)) {
+          foundPatterns.push(`Meta: ${pattern}`);
+          confidence += 0.25;
+          detectionMethod = 'Deep Pattern';
         }
       });
-    });
+
+      // CSS detection
+      config.patterns.css.forEach(pattern => {
+        const cssRegex = new RegExp(`class="[^"]*${pattern}[^"]*"`, 'gi');
+        if (cssRegex.test(htmlContent)) {
+          foundPatterns.push(`CSS: ${pattern}`);
+          confidence += 0.2;
+          detectionMethod = 'Deep Pattern';
+        }
+      });
+
+      // Comments detection
+      config.patterns.comments.forEach(pattern => {
+        const commentRegex = new RegExp(`<!--[^>]*${pattern}[^>]*-->`, 'gi');
+        if (commentRegex.test(htmlContent)) {
+          foundPatterns.push(`Comment: ${pattern}`);
+          confidence += 0.15;
+          detectionMethod = 'Deep Pattern';
+        }
+      });
+
+      // File path detection
+      config.patterns.files.forEach(pattern => {
+        scripts.forEach(script => {
+          if (script.includes(pattern)) {
+            foundPatterns.push(`File: ${pattern}`);
+            confidence += 0.25;
+            detectionMethod = 'Deep Pattern';
+          }
+        });
+      });
+    }
+
+    // Version detection
+    let version;
+    if (config.versionPatterns) {
+      for (const versionPattern of config.versionPatterns) {
+        const regex = new RegExp(versionPattern, 'gi');
+        const match = htmlContent.match(regex) || scripts.join(' ').match(regex);
+        if (match && match[1]) {
+          version = match[1];
+          confidence += 0.1;
+          break;
+        }
+      }
+    }
 
     if (foundPatterns.length > 0) {
       technologies.push({
         name: techName,
         category: config.category,
+        version,
         confidence: Math.min(confidence, 1.0),
-        detectionMethod: 'Pattern Matching',
+        detectionMethod,
         patterns: foundPatterns
       });
     }
   });
 
-  return technologies;
+  return technologies.sort((a, b) => b.confidence - a.confidence);
 }
 
 async function fetchWebsiteData(url: string) {
@@ -415,8 +709,6 @@ async function fetchWebsiteData(url: string) {
     const titleMatch = htmlContent.match(/<title[^>]*>(.*?)<\/title>/i);
     const descriptionMatch = htmlContent.match(/<meta[^>]*name="description"[^>]*content="([^"]*)"[^>]*>/i);
 
-    const allScriptContent = scripts.concat(inlineScripts).join(' ');
-
     return {
       htmlContent,
       scripts: scripts.concat(inlineScripts),
@@ -424,8 +716,7 @@ async function fetchWebsiteData(url: string) {
       metadata: {
         title: titleMatch ? titleMatch[1].trim() : undefined,
         description: descriptionMatch ? descriptionMatch[1].trim() : undefined
-      },
-      allScriptContent
+      }
     };
   } catch (error) {
     console.error(`Error fetching ${url}:`, error);
@@ -441,6 +732,7 @@ serve(async (req) => {
   try {
     const { urls, deepSearchEnabled, aiAnalysisEnabled } = await req.json();
     console.log('Analyzing URLs:', urls);
+    console.log('Deep search enabled:', deepSearchEnabled);
 
     const results = [];
 
@@ -451,11 +743,12 @@ serve(async (req) => {
         const websiteData = await fetchWebsiteData(url);
         const responseTime = Date.now() - startTime;
 
-        // Detect technologies
+        // Detect technologies with enhanced patterns and deep search
         const technologies = detectTechnologies(
           websiteData.htmlContent,
           websiteData.scripts,
-          websiteData.headers
+          websiteData.headers,
+          deepSearchEnabled
         );
 
         // Analyze social media integrations
