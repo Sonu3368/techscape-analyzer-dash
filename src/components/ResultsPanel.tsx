@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +14,13 @@ import {
   Zap,
   Brain,
   Tag,
-  Clock
+  Clock,
+  Share2,
+  Eye,
+  TrendingUp,
+  Users,
+  MessageCircle,
+  Camera
 } from 'lucide-react';
 
 interface DetectedTechnology {
@@ -27,11 +32,21 @@ interface DetectedTechnology {
   patterns: string[];
 }
 
+interface SocialMediaResult {
+  platform: string;
+  category: 'tracking' | 'widget' | 'embed' | 'sharing' | 'analytics' | 'authentication';
+  integrationMethod: 'script' | 'iframe' | 'meta' | 'sdk' | 'pixel' | 'api' | 'css';
+  confidence: number;
+  evidence: string[];
+  version?: string;
+}
+
 interface AnalysisResult {
   url: string;
   status: 'completed' | 'failed';
   error?: string;
   technologies: DetectedTechnology[];
+  socialMedia?: SocialMediaResult[];
   metadata: {
     title?: string;
     description?: string;
@@ -89,6 +104,36 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ job }) => {
     }
   };
 
+  const getSocialMediaIcon = (category: string) => {
+    switch (category) {
+      case 'tracking':
+        return <TrendingUp className="w-3 h-3" />;
+      case 'analytics':
+        return <Eye className="w-3 h-3" />;
+      case 'widget':
+        return <Users className="w-3 h-3" />;
+      case 'embed':
+        return <Camera className="w-3 h-3" />;
+      case 'sharing':
+        return <Share2 className="w-3 h-3" />;
+      default:
+        return <MessageCircle className="w-3 h-3" />;
+    }
+  };
+
+  const getIntegrationMethodColor = (method: string) => {
+    const colors: Record<string, string> = {
+      'pixel': 'bg-red-100 text-red-800 border-red-300',
+      'script': 'bg-blue-100 text-blue-800 border-blue-300',
+      'iframe': 'bg-green-100 text-green-800 border-green-300',
+      'meta': 'bg-purple-100 text-purple-800 border-purple-300',
+      'sdk': 'bg-orange-100 text-orange-800 border-orange-300',
+      'api': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      'css': 'bg-pink-100 text-pink-800 border-pink-300',
+    };
+    return colors[method] || 'bg-gray-100 text-gray-800 border-gray-300';
+  };
+
   const categoryColors: Record<string, string> = {
     'Frontend Frameworks': 'bg-blue-100 text-blue-800 border-blue-300',
     'Backend Languages': 'bg-green-100 text-green-800 border-green-300',
@@ -128,6 +173,12 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ job }) => {
                           <CheckCircle className="w-3 h-3 text-green-600" />
                           {result.technologies.length} techs
                         </Badge>
+                        {result.socialMedia && result.socialMedia.length > 0 && (
+                          <Badge variant="outline" className="flex items-center gap-1 bg-purple-50 text-purple-700 border-purple-300">
+                            <Share2 className="w-3 h-3" />
+                            {result.socialMedia.length} social
+                          </Badge>
+                        )}
                         <Badge variant="outline" className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {result.metadata.responseTime}ms
@@ -160,6 +211,61 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ job }) => {
                         {result.metadata.description && (
                           <p className="text-sm text-gray-600">{result.metadata.description}</p>
                         )}
+                      </div>
+                    )}
+
+                    {/* Social Media Technologies */}
+                    {result.socialMedia && result.socialMedia.length > 0 && (
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                          <Share2 className="w-4 h-4 text-purple-600" />
+                          Social Media Technologies ({result.socialMedia.length})
+                        </h4>
+                        
+                        <div className="grid gap-3">
+                          {result.socialMedia.map((social, socialIndex) => (
+                            <div key={socialIndex} className="p-3 border rounded-lg hover:bg-purple-50 transition-colors border-purple-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-gray-900">{social.platform}</span>
+                                  {social.version && (
+                                    <Badge variant="outline" className="text-xs">
+                                      v{social.version}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1">
+                                    {getSocialMediaIcon(social.category)}
+                                    <span className="text-xs text-gray-500 capitalize">{social.category}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <div className={`w-2 h-2 rounded-full ${getConfidenceColor(social.confidence)}`} />
+                                    <span className="text-xs text-gray-500">
+                                      {Math.round(social.confidence * 100)}%
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center justify-between">
+                                <Badge 
+                                  variant="outline" 
+                                  className={getIntegrationMethodColor(social.integrationMethod)}
+                                >
+                                  {social.integrationMethod.toUpperCase()}
+                                </Badge>
+                                
+                                {social.evidence.length > 0 && (
+                                  <div className="text-xs text-gray-500">
+                                    Evidence: {social.evidence.slice(0, 2).join(', ')}
+                                    {social.evidence.length > 2 && ` +${social.evidence.length - 2} more`}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 
