@@ -16,10 +16,29 @@ import {
   Brain,
   Tag,
   Clock,
-  Users
+  Users,
+  Share2,
+  MessageCircle,
+  LogIn,
+  ExternalLink,
+  Heart,
+  Eye
 } from 'lucide-react';
-import { SocialMediaAnalysisComponent } from './SocialMediaAnalysis';
-import { analyzeSocialMediaIntegrations } from '@/utils/socialMediaDetection';
+
+interface SocialMediaIntegration {
+  platform: string;
+  type: 'icon' | 'share_button' | 'embedded_feed' | 'social_login' | 'comment_system' | 'widget' | 'pixel' | 'tracking';
+  confidence: number;
+  evidence: string[];
+  urls?: string[];
+}
+
+interface SocialMediaAnalysis {
+  integrations: SocialMediaIntegration[];
+  totalPlatforms: number;
+  engagementFeatures: string[];
+  socialLoginOptions: string[];
+}
 
 interface DetectedTechnology {
   name: string;
@@ -35,6 +54,7 @@ interface AnalysisResult {
   status: 'completed' | 'failed';
   error?: string;
   technologies: DetectedTechnology[];
+  socialMediaAnalysis?: SocialMediaAnalysis;
   metadata: {
     title?: string;
     description?: string;
@@ -95,6 +115,67 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ job }) => {
     }
   };
 
+  const getIntegrationIcon = (type: SocialMediaIntegration['type']) => {
+    switch (type) {
+      case 'share_button':
+        return <Share2 className="w-4 h-4" />;
+      case 'comment_system':
+        return <MessageCircle className="w-4 h-4" />;
+      case 'social_login':
+        return <LogIn className="w-4 h-4" />;
+      case 'embedded_feed':
+        return <Eye className="w-4 h-4" />;
+      case 'widget':
+        return <Users className="w-4 h-4" />;
+      case 'pixel':
+        return <Zap className="w-4 h-4" />;
+      case 'tracking':
+        return <Brain className="w-4 h-4" />;
+      default:
+        return <ExternalLink className="w-4 h-4" />;
+    }
+  };
+
+  const getIntegrationTypeLabel = (type: SocialMediaIntegration['type']) => {
+    switch (type) {
+      case 'icon':
+        return 'Social Icon';
+      case 'share_button':
+        return 'Share Button';
+      case 'embedded_feed':
+        return 'Embedded Feed';
+      case 'social_login':
+        return 'Social Login';
+      case 'comment_system':
+        return 'Comment System';
+      case 'widget':
+        return 'Social Widget';
+      case 'pixel':
+        return 'Tracking Pixel';
+      case 'tracking':
+        return 'Analytics Script';
+      default:
+        return 'Integration';
+    }
+  };
+
+  const getPlatformColor = (platform: string) => {
+    const colors: Record<string, string> = {
+      facebook: 'bg-blue-600',
+      google: 'bg-red-500',
+      twitter: 'bg-sky-500',
+      instagram: 'bg-pink-500',
+      linkedin: 'bg-blue-700',
+      youtube: 'bg-red-600',
+      tiktok: 'bg-black',
+      pinterest: 'bg-red-500',
+      whatsapp: 'bg-green-500',
+      telegram: 'bg-blue-500',
+      discord: 'bg-indigo-600'
+    };
+    return colors[platform.toLowerCase()] || 'bg-gray-500';
+  };
+
   const categoryColors: Record<string, string> = {
     'Frontend Frameworks': 'bg-blue-100 text-blue-800 border-blue-300',
     'Backend Languages': 'bg-green-100 text-green-800 border-green-300',
@@ -104,6 +185,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ job }) => {
     'Web Servers': 'bg-red-100 text-red-800 border-red-300',
     'JavaScript Libraries': 'bg-yellow-100 text-yellow-800 border-yellow-300',
     'CSS Frameworks': 'bg-indigo-100 text-indigo-800 border-indigo-300',
+    'E-commerce': 'bg-emerald-100 text-emerald-800 border-emerald-300',
   };
 
   return (
@@ -130,10 +212,16 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ job }) => {
                   <div className="flex items-center gap-2">
                     {result.status === 'completed' ? (
                       <>
-                        <Badge variant="secondary\" className="flex items-center gap-1">
+                        <Badge variant="secondary" className="flex items-center gap-1">
                           <CheckCircle className="w-3 h-3 text-green-600" />
                           {result.technologies.length} techs
                         </Badge>
+                        {result.socialMediaAnalysis && (
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {result.socialMediaAnalysis.totalPlatforms} social
+                          </Badge>
+                        )}
                         <Badge variant="outline" className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {result.metadata.responseTime}ms
@@ -231,15 +319,171 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ job }) => {
                     </TabsContent>
 
                     <TabsContent value="social" className="mt-4">
-                      {result.htmlContent && (
-                        <SocialMediaAnalysisComponent
-                          analysis={analyzeSocialMediaIntegrations(
-                            result.htmlContent,
-                            result.scripts || [],
-                            result.links || []
+                      {result.socialMediaAnalysis ? (
+                        <div className="space-y-6">
+                          {/* Overview */}
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="flex items-center gap-2">
+                                <Users className="w-5 h-5 text-blue-600" />
+                                Social Media Integration Analysis
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                                  <div className="text-2xl font-bold text-blue-600">{result.socialMediaAnalysis.totalPlatforms}</div>
+                                  <div className="text-sm text-gray-600">Platforms Detected</div>
+                                </div>
+                                <div className="text-center p-4 bg-green-50 rounded-lg">
+                                  <div className="text-2xl font-bold text-green-600">{result.socialMediaAnalysis.integrations.length}</div>
+                                  <div className="text-sm text-gray-600">Total Integrations</div>
+                                </div>
+                                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                                  <div className="text-2xl font-bold text-purple-600">{result.socialMediaAnalysis.engagementFeatures.length}</div>
+                                  <div className="text-sm text-gray-600">Engagement Features</div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Platform Integrations */}
+                          {result.socialMediaAnalysis.integrations.length > 0 && (
+                            <Card>
+                              <CardHeader>
+                                <CardTitle>Platform Integrations</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-4">
+                                  {/* Group integrations by platform */}
+                                  {Object.entries(
+                                    result.socialMediaAnalysis.integrations.reduce((acc, integration) => {
+                                      if (!acc[integration.platform]) {
+                                        acc[integration.platform] = [];
+                                      }
+                                      acc[integration.platform].push(integration);
+                                      return acc;
+                                    }, {} as Record<string, SocialMediaIntegration[]>)
+                                  ).map(([platform, integrations]) => (
+                                    <div key={platform} className="border rounded-lg p-4">
+                                      <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-3">
+                                          <div className={`w-3 h-3 rounded-full ${getPlatformColor(platform)}`} />
+                                          <span className="font-semibold capitalize">{platform}</span>
+                                          <Badge variant="secondary">{integrations.length} integrations</Badge>
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {integrations.map((integration, index) => (
+                                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                                            <div className="flex items-center gap-2">
+                                              {getIntegrationIcon(integration.type)}
+                                              <span className="text-sm font-medium">
+                                                {getIntegrationTypeLabel(integration.type)}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <span className={`text-sm ${integration.confidence >= 0.8 ? 'text-green-600' : integration.confidence >= 0.6 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                                {Math.round(integration.confidence * 100)}%
+                                              </span>
+                                              <Progress 
+                                                value={integration.confidence * 100} 
+                                                className="w-16 h-2"
+                                              />
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+
+                                      {/* Show evidence */}
+                                      <div className="mt-3 pt-3 border-t">
+                                        <div className="text-sm font-medium text-gray-700 mb-2">Evidence:</div>
+                                        <div className="flex flex-wrap gap-2">
+                                          {integrations
+                                            .flatMap(i => i.evidence)
+                                            .slice(0, 3)
+                                            .map((evidence, index) => (
+                                              <span
+                                                key={index}
+                                                className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded"
+                                              >
+                                                {evidence.length > 40 ? `${evidence.substring(0, 40)}...` : evidence}
+                                              </span>
+                                            ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
                           )}
-                          url={result.url}
-                        />
+
+                          {/* Engagement Features */}
+                          {result.socialMediaAnalysis.engagementFeatures.length > 0 && (
+                            <Card>
+                              <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                  <Heart className="w-5 h-5 text-pink-600" />
+                                  Engagement Features
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {result.socialMediaAnalysis.engagementFeatures.map((feature, index) => (
+                                    <div key={index} className="flex items-center gap-2 p-3 bg-pink-50 rounded">
+                                      <Share2 className="w-4 h-4 text-pink-600" />
+                                      <span className="text-sm">{feature}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Social Login Options */}
+                          {result.socialMediaAnalysis.socialLoginOptions.length > 0 && (
+                            <Card>
+                              <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                  <LogIn className="w-5 h-5 text-green-600" />
+                                  Social Login Options
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {result.socialMediaAnalysis.socialLoginOptions.map((option, index) => (
+                                    <div key={index} className="flex items-center gap-2 p-3 bg-green-50 rounded">
+                                      <LogIn className="w-4 h-4 text-green-600" />
+                                      <span className="text-sm">{option}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* No Integrations Found */}
+                          {result.socialMediaAnalysis.integrations.length === 0 && (
+                            <Card>
+                              <CardContent className="pt-6">
+                                <div className="text-center py-8">
+                                  <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Social Media Integrations Found</h3>
+                                  <p className="text-gray-500">
+                                    This website doesn't appear to have any detectable social media integrations.
+                                  </p>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                          <p className="text-gray-500">No social media analysis available for this result</p>
+                        </div>
                       )}
                     </TabsContent>
 
