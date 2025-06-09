@@ -71,7 +71,7 @@ const ENHANCED_TECHNOLOGY_PATTERNS = {
     category: 'Frontend Frameworks',
     patterns: {
       scripts: ['angular', '@angular', 'angular.min.js'],
-      html: ['ng-app', 'ng-controller', 'ng-', 'angular.module', '[ng-'],
+      html: ['ng-app', 'ng-controller', 'ng-', 'angular.module', '\\[ng-'],
       headers: ['x-powered-by.*angular'],
       meta: ['generator.*angular'],
       files: ['angular-', '@angular/'],
