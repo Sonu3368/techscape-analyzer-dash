@@ -1,50 +1,43 @@
-import React, { useState, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { toast } from '@/hooks/use-toast';
-import { Upload, Play, RotateCcw, FileText, Zap, Brain, Settings, Plus, X, Sparkles, Code, Globe, Cookie, MousePointer } from 'lucide-react';
-import { DemoCounter } from '@/components/DemoCounter';
-import { useDemoLimit } from '@/hooks/useDemoLimit';
-import { useAuth } from '@/hooks/useAuth';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { toast } from "@/components/ui/use-toast";
+import { FileInput } from "@/components/FileInput";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import {
+  Zap
+} from "lucide-react";
 
 interface InputPanelProps {
-  urlInput: string;
-  setUrlInput: (value: string) => void;
-  deepSearchEnabled: boolean;
-  setDeepSearchEnabled: (value: boolean) => void;
-  aiAnalysisEnabled: boolean;
-  setAiAnalysisEnabled: (value: boolean) => void;
-  onStartAnalysis: (urls: string[], options: any) => void;
-  onClearAll: () => void;
-  isProcessing: boolean;
+  onAnalyze: (analysisRequest: any) => void;
+  isLoading: boolean;
+  onFileUpload: (file: File) => void;
+  onDemoAnalyze: () => void;
+  demoLimit: boolean;
 }
 
 export const InputPanel: React.FC<InputPanelProps> = ({
-  urlInput,
-  setUrlInput,
-  deepSearchEnabled,
-  setDeepSearchEnabled,
-  aiAnalysisEnabled,
-  setAiAnalysisEnabled,
-  onStartAnalysis,
-  onClearAll,
-  isProcessing,
+  onAnalyze,
+  isLoading,
+  onFileUpload,
+  onDemoAnalyze,
+  demoLimit,
 }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
-  const { isDemoLimitReached, remainingDemoSearches, incrementDemoCount } = useDemoLimit();
-  
-  // Search mode state
+  const [urls, setUrls] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState("basic");
+  const [deepSearchEnabled, setDeepSearchEnabled] = useState(false);
+  const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(false);
   const [searchMode, setSearchMode] = useState<'basic' | 'advanced' | 'full'>('full');
-  
-  // Enhanced deep search options
+  const [customPatterns, setCustomPatterns] = useState<string[]>([]);
   const [deepSearchOptions, setDeepSearchOptions] = useState({
     analyzeHtmlComments: true,
     analyzeMetaTags: true,
@@ -57,619 +50,415 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     analyzeCookiePatterns: true,
     detectBehavioralPatterns: true,
   });
-  
-  // Custom patterns
-  const [customPatterns, setCustomPatterns] = useState<string[]>([
-    'sequelize', 'vite', 'qwik', 'jotai', 'angular', 'cloudfront.net', 
-    'recoil', 'vue', 'supabase', 'mongodb', 'openapi'
-  ]);
-  const [newPattern, setNewPattern] = useState('');
-  const [isGeneratingPatterns, setIsGeneratingPatterns] = useState(false);
+  const [performanceAnalysisEnabled, setPerformanceAnalysisEnabled] = useState(false);
+  const [performanceOptions, setPerformanceOptions] = useState({
+    coreWebVitals: true,
+    networkAnalysis: true,
+    accessibilityCheck: true,
+    seoAnalysis: true,
+    codeQualityCheck: true,
+    competitorAnalysis: false,
+    competitorUrls: [] as string[],
+  });
 
-  const validateUrls = (urls: string[]): string[] => {
-    const urlPattern = /^https?:\/\/.+/i;
-    return urls.filter(url => {
-      const trimmed = url.trim();
-      return trimmed && urlPattern.test(trimmed);
-    });
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUrls(e.target.value.split(",").map((url) => url.trim()));
   };
 
-  const parseUrls = (text: string): string[] => {
-    return text
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
+  const handlePatternChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setCustomPatterns(e.target.value.split("\n").map((pattern) => pattern.trim()));
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      let urls: string[] = [];
-
-      if (file.name.endsWith('.csv')) {
-        urls = content
-          .split('\n')
-          .map(line => line.split(',')[0]?.trim())
-          .filter(url => url && url.length > 0);
-      } else {
-        urls = parseUrls(content);
-      }
-
-      setUrlInput(urls.join('\n'));
+  const handleAnalyze = async () => {
+    if (urls.length === 0) {
       toast({
-        title: "File Uploaded",
-        description: `Loaded ${urls.length} URLs from ${file.name}`,
-      });
-    };
-
-    reader.readAsText(file);
-    event.target.value = '';
-  };
-
-  const generateAiPatterns = async () => {
-    setIsGeneratingPatterns(true);
-    
-    try {
-      // Generate comprehensive AI patterns for modern web technologies
-      const aiGeneratedPatterns = [
-        // Frontend Frameworks & Libraries
-        'react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxt', 'gatsby', 'remix',
-        'alpine.js', 'lit', 'stencil', 'preact', 'solid.js', 'qwik', 'astro',
-        
-        // UI Component Libraries
-        'material-ui', 'ant-design', 'chakra-ui', 'mantine', 'semantic-ui',
-        'bootstrap', 'tailwindcss', 'bulma', 'foundation', 'pure.css',
-        
-        // State Management
-        'redux', 'mobx', 'zustand', 'jotai', 'recoil', 'valtio', 'xstate',
-        'context-api', 'apollo-client', 'relay', 'swr', 'react-query',
-        
-        // Build Tools & Bundlers
-        'webpack', 'vite', 'rollup', 'parcel', 'esbuild', 'turbopack',
-        'snowpack', 'rspack', 'swc', 'babel', 'typescript',
-        
-        // Backend Frameworks
-        'express', 'fastify', 'koa', 'hapi', 'nestjs', 'django', 'flask',
-        'rails', 'laravel', 'spring-boot', 'asp.net', 'gin', 'fiber',
-        
-        // Databases & Storage
-        'mongodb', 'postgresql', 'mysql', 'redis', 'sqlite', 'cassandra',
-        'dynamodb', 'firestore', 'supabase', 'planetscale', 'neon',
-        
-        // Cloud & Hosting
-        'vercel', 'netlify', 'aws', 'gcp', 'azure', 'cloudflare', 'heroku',
-        'digitalocean', 'railway', 'render', 'fly.io', 'deno-deploy',
-        
-        // Analytics & Monitoring
-        'google-analytics', 'mixpanel', 'amplitude', 'hotjar', 'fullstory',
-        'segment', 'posthog', 'plausible', 'fathom', 'umami',
-        
-        // Performance & Optimization
-        'lighthouse', 'web-vitals', 'intersection-observer', 'service-worker',
-        'webp', 'avif', 'lazy-loading', 'code-splitting', 'tree-shaking',
-        
-        // Authentication & Security
-        'auth0', 'firebase-auth', 'clerk', 'supabase-auth', 'okta',
-        'keycloak', 'passport', 'jwt', 'oauth', 'saml',
-        
-        // CMS & E-commerce
-        'wordpress', 'drupal', 'joomla', 'strapi', 'contentful', 'sanity',
-        'shopify', 'woocommerce', 'magento', 'prestashop', 'medusa',
-        
-        // Testing & Quality
-        'jest', 'vitest', 'cypress', 'playwright', 'selenium', 'storybook',
-        'chromatic', 'eslint', 'prettier', 'husky', 'lint-staged',
-        
-        // API & Communication
-        'graphql', 'apollo', 'relay', 'urql', 'rest', 'grpc', 'websocket',
-        'socket.io', 'sse', 'webhook', 'openapi', 'swagger',
-        
-        // DevOps & CI/CD
-        'docker', 'kubernetes', 'github-actions', 'gitlab-ci', 'jenkins',
-        'circleci', 'travis-ci', 'terraform', 'ansible', 'vagrant'
-      ];
-
-      // Add unique patterns that aren't already present
-      const newPatterns = aiGeneratedPatterns.filter(pattern => 
-        !customPatterns.includes(pattern)
-      );
-
-      if (newPatterns.length > 0) {
-        setCustomPatterns(prev => [...prev, ...newPatterns]);
-        toast({
-          title: "AI Patterns Generated",
-          description: `Added ${newPatterns.length} comprehensive technology patterns for enhanced detection`,
-        });
-      } else {
-        toast({
-          title: "Patterns Already Present",
-          description: "All AI-generated patterns are already in your custom patterns list",
-        });
-      }
-    } catch (error) {
-      console.error('Error generating AI patterns:', error);
-      toast({
-        title: "Pattern Generation Failed",
-        description: "Failed to generate AI patterns. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGeneratingPatterns(false);
-    }
-  };
-
-  const addCustomPattern = () => {
-    if (newPattern.trim() && !customPatterns.includes(newPattern.trim())) {
-      setCustomPatterns([...customPatterns, newPattern.trim()]);
-      setNewPattern('');
-    }
-  };
-
-  const removeCustomPattern = (pattern: string) => {
-    setCustomPatterns(customPatterns.filter(p => p !== pattern));
-  };
-
-  const handleStartAnalysis = () => {
-    const urls = parseUrls(urlInput);
-    const validUrls = validateUrls(urls);
-
-    if (validUrls.length === 0) {
-      toast({
-        title: "Invalid Input",
-        description: "Please enter at least one valid URL starting with http:// or https://",
+        title: "No URLs provided",
+        description: "Please enter at least one URL to analyze",
         variant: "destructive",
       });
       return;
     }
 
-    // Check demo limit for unauthenticated users
-    if (!user && isDemoLimitReached) {
-      toast({
-        title: "Demo Limit Reached",
-        description: "Please sign up or log in to continue analyzing websites",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (validUrls.length > 1000) {
-      toast({
-        title: "Too Many URLs",
-        description: "Please limit your input to 1000 URLs or fewer",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (validUrls.length < urls.length) {
-      toast({
-        title: "Some URLs Filtered",
-        description: `${urls.length - validUrls.length} invalid URLs were removed`,
-      });
-    }
-
-    const analysisOptions = {
-      searchMode,
+    const analysisRequest = {
+      urls,
       deepSearchEnabled,
       aiAnalysisEnabled,
+      performanceAnalysisEnabled,
+      searchMode,
       deepSearchOptions,
+      performanceOptions,
       customPatterns,
-      isDemo: !user,
     };
 
-    // Increment demo count for unauthenticated users
-    if (!user) {
-      incrementDemoCount();
-    }
-
-    onStartAnalysis(validUrls, analysisOptions);
+    onAnalyze(analysisRequest);
   };
 
-  const urlCount = parseUrls(urlInput).length;
-  const validUrlCount = validateUrls(parseUrls(urlInput)).length;
-  const canAnalyze = validUrlCount > 0 && (user || !isDemoLimitReached);
+  const renderBasicOptions = () => (
+    <div className="space-y-4">
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="deep-search"
+          checked={deepSearchEnabled}
+          onCheckedChange={setDeepSearchEnabled}
+        />
+        <Label htmlFor="deep-search" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+          Enable Deep Search
+        </Label>
+      </div>
 
-  return (
-    <Card className="border-blue-200 shadow-lg">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-blue-600" />
-            URL Input & Enhanced Detection
-          </CardTitle>
-          <DemoCounter />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* URL Input */}
-        <div className="space-y-3">
-          <Label htmlFor="url-input" className="text-sm font-medium">
-            Website URLs
-          </Label>
-          <Textarea
-            id="url-input"
-            placeholder="Enter URLs (one per line):&#10;https://example.com&#10;https://github.com&#10;https://stackoverflow.com"
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            className="min-h-[120px] font-mono text-sm"
-            disabled={isProcessing || (!user && isDemoLimitReached)}
-          />
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex gap-2">
-              {urlCount > 0 && (
-                <Badge variant={validUrlCount === urlCount ? "default" : "destructive"}>
-                  {validUrlCount} valid of {urlCount} URLs
-                </Badge>
-              )}
-              {urlCount > 1000 && (
-                <Badge variant="destructive">
-                  Limit: 1000 URLs
-                </Badge>
-              )}
-            </div>
-          </div>
-        </div>
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="ai-analysis"
+          checked={aiAnalysisEnabled}
+          onCheckedChange={setAiAnalysisEnabled}
+        />
+        <Label htmlFor="ai-analysis" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+          Enable AI Analysis
+        </Label>
+      </div>
 
-        {/* Demo limit warning */}
-        {!user && remainingDemoSearches <= 2 && remainingDemoSearches > 0 && (
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800">
-              ⚠️ Only {remainingDemoSearches} free searches remaining. 
-              <a href="/auth/signup" className="font-medium underline ml-1">Sign up</a> for unlimited access!
-            </p>
-          </div>
-        )}
+      <div>
+        <Label htmlFor="search-mode" className="text-sm font-medium block mb-1">Search Mode</Label>
+        <select
+          id="search-mode"
+          className="w-full p-2 border rounded"
+          value={searchMode}
+          onChange={(e) => setSearchMode(e.target.value as 'basic' | 'advanced' | 'full')}
+        >
+          <option value="basic">Basic</option>
+          <option value="advanced">Advanced</option>
+          <option value="full">Full</option>
+        </select>
+      </div>
+    </div>
+  );
 
-        {/* File Upload */}
-        <div className="space-y-3">
-          <Label className="text-sm font-medium">Or Upload File</Label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,.txt"
-            onChange={handleFileUpload}
-            className="hidden"
-            disabled={isProcessing || (!user && isDemoLimitReached)}
-          />
-          <Button
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isProcessing || (!user && isDemoLimitReached)}
-            className="w-full"
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Upload CSV or TXT File
-          </Button>
-        </div>
+  const renderDeepSearchOptions = () => (
+    <div className="grid grid-cols-2 gap-4">
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="analyze-comments"
+          checked={deepSearchOptions.analyzeHtmlComments}
+          onCheckedChange={(checked) =>
+            setDeepSearchOptions(prev => ({ ...prev, analyzeHtmlComments: checked as boolean }))
+          }
+        />
+        <Label htmlFor="analyze-comments" className="text-sm">
+          Analyze HTML Comments
+        </Label>
+      </div>
 
-        {/* Search Mode */}
-        <div className="space-y-4 pt-4 border-t">
-          <Label className="text-sm font-medium">Detection Mode</Label>
-          <RadioGroup value={searchMode} onValueChange={(value: any) => setSearchMode(value)}>
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="analyze-meta"
+          checked={deepSearchOptions.analyzeMetaTags}
+          onCheckedChange={(checked) =>
+            setDeepSearchOptions(prev => ({ ...prev, analyzeMetaTags: checked as boolean }))
+          }
+        />
+        <Label htmlFor="analyze-meta" className="text-sm">
+          Analyze Meta Tags
+        </Label>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="detect-elements"
+          checked={deepSearchOptions.detectCustomElements}
+          onCheckedChange={(checked) =>
+            setDeepSearchOptions(prev => ({ ...prev, detectCustomElements: checked as boolean }))
+          }
+        />
+        <Label htmlFor="detect-elements" className="text-sm">
+          Detect Custom Elements
+        </Label>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="analyze-paths"
+          checked={deepSearchOptions.analyzeFilePaths}
+          onCheckedChange={(checked) =>
+            setDeepSearchOptions(prev => ({ ...prev, analyzeFilePaths: checked as boolean }))
+          }
+        />
+        <Label htmlFor="analyze-paths" className="text-sm">
+          Analyze File Paths
+        </Label>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="ai-pattern-detection"
+          checked={deepSearchOptions.aiPatternDetection}
+          onCheckedChange={(checked) =>
+            setDeepSearchOptions(prev => ({ ...prev, aiPatternDetection: checked as boolean }))
+          }
+        />
+        <Label htmlFor="ai-pattern-detection" className="text-sm">
+          AI Pattern Detection
+        </Label>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="analyze-css"
+          checked={deepSearchOptions.analyzeCssClasses}
+          onCheckedChange={(checked) =>
+            setDeepSearchOptions(prev => ({ ...prev, analyzeCssClasses: checked as boolean }))
+          }
+        />
+        <Label htmlFor="analyze-css" className="text-sm">
+          Analyze CSS Classes
+        </Label>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="analyze-scripts"
+          checked={deepSearchOptions.analyzeInlineScripts}
+          onCheckedChange={(checked) =>
+            setDeepSearchOptions(prev => ({ ...prev, analyzeInlineScripts: checked as boolean }))
+          }
+        />
+        <Label htmlFor="analyze-scripts" className="text-sm">
+          Analyze Inline Scripts
+        </Label>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="analyze-headers"
+          checked={deepSearchOptions.analyzeHttpHeaders}
+          onCheckedChange={(checked) =>
+            setDeepSearchOptions(prev => ({ ...prev, analyzeHttpHeaders: checked as boolean }))
+          }
+        />
+        <Label htmlFor="analyze-headers" className="text-sm">
+          Analyze HTTP Headers
+        </Label>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="analyze-cookies"
+          checked={deepSearchOptions.analyzeCookiePatterns}
+          onCheckedChange={(checked) =>
+            setDeepSearchOptions(prev => ({ ...prev, analyzeCookiePatterns: checked as boolean }))
+          }
+        />
+        <Label htmlFor="analyze-cookies" className="text-sm">
+          Analyze Cookie Patterns
+        </Label>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="detect-behavioral"
+          checked={deepSearchOptions.detectBehavioralPatterns}
+          onCheckedChange={(checked) =>
+            setDeepSearchOptions(prev => ({ ...prev, detectBehavioralPatterns: checked as boolean }))
+          }
+        />
+        <Label htmlFor="detect-behavioral" className="text-sm">
+          Detect Behavioral Patterns
+        </Label>
+      </div>
+    </div>
+  );
+
+  const renderPerformanceOptions = () => (
+    <div className="space-y-4">
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="performance-analysis"
+          checked={performanceAnalysisEnabled}
+          onCheckedChange={setPerformanceAnalysisEnabled}
+        />
+        <Label 
+          htmlFor="performance-analysis" 
+          className="text-sm font-medium cursor-pointer flex items-center gap-2"
+        >
+          <Zap className="w-4 h-4 text-blue-600" />
+          Enable Performance Analysis
+        </Label>
+      </div>
+
+      {performanceAnalysisEnabled && (
+        <div className="ml-6 space-y-3 p-4 border rounded-lg bg-blue-50">
+          <div className="grid grid-cols-2 gap-2">
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="basic" id="basic" />
-              <Label htmlFor="basic" className="text-sm">Basic (HTML content only)</Label>
+              <Checkbox
+                id="core-web-vitals"
+                checked={performanceOptions.coreWebVitals}
+                onCheckedChange={(checked) =>
+                  setPerformanceOptions(prev => ({ ...prev, coreWebVitals: checked as boolean }))
+                }
+              />
+              <Label htmlFor="core-web-vitals" className="text-sm">
+                Core Web Vitals
+              </Label>
             </div>
+
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="advanced" id="advanced" />
-              <Label htmlFor="advanced" className="text-sm">Advanced (HTML, CSS & JS files)</Label>
+              <Checkbox
+                id="network-analysis"
+                checked={performanceOptions.networkAnalysis}
+                onCheckedChange={(checked) =>
+                  setPerformanceOptions(prev => ({ ...prev, networkAnalysis: checked as boolean }))
+                }
+              />
+              <Label htmlFor="network-analysis" className="text-sm">
+                Network Analysis
+              </Label>
             </div>
+
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="full" id="full" />
-              <Label htmlFor="full" className="text-sm">Full Scan (All resources + headers)</Label>
+              <Checkbox
+                id="accessibility-check"
+                checked={performanceOptions.accessibilityCheck}
+                onCheckedChange={(checked) =>
+                  setPerformanceOptions(prev => ({ ...prev, accessibilityCheck: checked as boolean }))
+                }
+              />
+              <Label htmlFor="accessibility-check" className="text-sm">
+                Accessibility Check
+              </Label>
             </div>
-          </RadioGroup>
-        </div>
 
-        {/* Deep Search Toggle */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-indigo-600" />
-            <Label htmlFor="deep-search" className="text-sm">
-              Deep Technology Detection
-            </Label>
-          </div>
-          <Switch
-            id="deep-search"
-            checked={deepSearchEnabled}
-            onCheckedChange={setDeepSearchEnabled}
-            disabled={isProcessing}
-          />
-        </div>
-        <p className="text-xs text-gray-500 ml-6">
-          Advanced pattern detection, source code analysis, and behavioral detection
-        </p>
-
-        {/* Enhanced Deep Search Options */}
-        {deepSearchEnabled && (
-          <div className="space-y-4 ml-6 p-4 bg-gray-50 rounded-lg">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="html-comments"
-                  checked={deepSearchOptions.analyzeHtmlComments}
-                  onCheckedChange={(checked) => 
-                    setDeepSearchOptions({
-                      ...deepSearchOptions,
-                      analyzeHtmlComments: checked as boolean
-                    })
-                  }
-                />
-                <Label htmlFor="html-comments" className="text-sm flex items-center gap-1">
-                  <Code className="h-3 w-3" />
-                  HTML Comments Analysis
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="meta-tags"
-                  checked={deepSearchOptions.analyzeMetaTags}
-                  onCheckedChange={(checked) => 
-                    setDeepSearchOptions({
-                      ...deepSearchOptions,
-                      analyzeMetaTags: checked as boolean
-                    })
-                  }
-                />
-                <Label htmlFor="meta-tags" className="text-sm flex items-center gap-1">
-                  <FileText className="h-3 w-3" />
-                  Meta Tags & Generators
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="custom-elements"
-                  checked={deepSearchOptions.detectCustomElements}
-                  onCheckedChange={(checked) => 
-                    setDeepSearchOptions({
-                      ...deepSearchOptions,
-                      detectCustomElements: checked as boolean
-                    })
-                  }
-                />
-                <Label htmlFor="custom-elements" className="text-sm flex items-center gap-1">
-                  <Settings className="h-3 w-3" />
-                  Custom Elements & Attributes
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="file-paths"
-                  checked={deepSearchOptions.analyzeFilePaths}
-                  onCheckedChange={(checked) => 
-                    setDeepSearchOptions({
-                      ...deepSearchOptions,
-                      analyzeFilePaths: checked as boolean
-                    })
-                  }
-                />
-                <Label htmlFor="file-paths" className="text-sm flex items-center gap-1">
-                  <Globe className="h-3 w-3" />
-                  File Paths & Structure
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="css-classes"
-                  checked={deepSearchOptions.analyzeCssClasses}
-                  onCheckedChange={(checked) => 
-                    setDeepSearchOptions({
-                      ...deepSearchOptions,
-                      analyzeCssClasses: checked as boolean
-                    })
-                  }
-                />
-                <Label htmlFor="css-classes" className="text-sm flex items-center gap-1">
-                  <Code className="h-3 w-3" />
-                  CSS Class Patterns
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="inline-scripts"
-                  checked={deepSearchOptions.analyzeInlineScripts}
-                  onCheckedChange={(checked) => 
-                    setDeepSearchOptions({
-                      ...deepSearchOptions,
-                      analyzeInlineScripts: checked as boolean
-                    })
-                  }
-                />
-                <Label htmlFor="inline-scripts" className="text-sm flex items-center gap-1">
-                  <Code className="h-3 w-3" />
-                  Inline Scripts & Functions
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="http-headers"
-                  checked={deepSearchOptions.analyzeHttpHeaders}
-                  onCheckedChange={(checked) => 
-                    setDeepSearchOptions({
-                      ...deepSearchOptions,
-                      analyzeHttpHeaders: checked as boolean
-                    })
-                  }
-                />
-                <Label htmlFor="http-headers" className="text-sm flex items-center gap-1">
-                  <Globe className="h-3 w-3" />
-                  HTTP Headers Analysis
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="cookie-patterns"
-                  checked={deepSearchOptions.analyzeCookiePatterns}
-                  onCheckedChange={(checked) => 
-                    setDeepSearchOptions({
-                      ...deepSearchOptions,
-                      analyzeCookiePatterns: checked as boolean
-                    })
-                  }
-                />
-                <Label htmlFor="cookie-patterns" className="text-sm flex items-center gap-1">
-                  <Cookie className="h-3 w-3" />
-                  Cookie Patterns
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="behavioral-patterns"
-                  checked={deepSearchOptions.detectBehavioralPatterns}
-                  onCheckedChange={(checked) => 
-                    setDeepSearchOptions({
-                      ...deepSearchOptions,
-                      detectBehavioralPatterns: checked as boolean
-                    })
-                  }
-                />
-                <Label htmlFor="behavioral-patterns" className="text-sm flex items-center gap-1">
-                  <MousePointer className="h-3 w-3" />
-                  Behavioral Detection
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="ai-patterns"
-                  checked={deepSearchOptions.aiPatternDetection}
-                  onCheckedChange={(checked) => 
-                    setDeepSearchOptions({
-                      ...deepSearchOptions,
-                      aiPatternDetection: checked as boolean
-                    })
-                  }
-                />
-                <Label htmlFor="ai-patterns" className="text-sm flex items-center gap-2">
-                  <Sparkles className="h-3 w-3 text-purple-600" />
-                  AI Pattern Generation
-                </Label>
-              </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="seo-analysis"
+                checked={performanceOptions.seoAnalysis}
+                onCheckedChange={(checked) =>
+                  setPerformanceOptions(prev => ({ ...prev, seoAnalysis: checked as boolean }))
+                }
+              />
+              <Label htmlFor="seo-analysis" className="text-sm">
+                SEO Analysis
+              </Label>
             </div>
-            
-            <div className="text-xs text-gray-600 p-2 bg-blue-50 border border-blue-200 rounded">
-              <strong>Enhanced Detection includes:</strong> Framework-specific elements, library signatures, 
-              build tool artifacts, CMS patterns, analytics tracking, CDN usage, and server technology indicators.
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="code-quality"
+                checked={performanceOptions.codeQualityCheck}
+                onCheckedChange={(checked) =>
+                  setPerformanceOptions(prev => ({ ...prev, codeQualityCheck: checked as boolean }))
+                }
+              />
+              <Label htmlFor="code-quality" className="text-sm">
+                Code Quality Check
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="competitor-analysis"
+                checked={performanceOptions.competitorAnalysis}
+                onCheckedChange={(checked) =>
+                  setPerformanceOptions(prev => ({ ...prev, competitorAnalysis: checked as boolean }))
+                }
+              />
+              <Label htmlFor="competitor-analysis" className="text-sm">
+                Competitor Analysis
+              </Label>
             </div>
           </div>
-        )}
 
-        {/* Custom Patterns with AI Generation */}
-        <div className="space-y-3 pt-4 border-t">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">Custom Search Patterns</Label>
-            <Button
-              onClick={generateAiPatterns}
-              disabled={isGeneratingPatterns || isProcessing}
-              size="sm"
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Sparkles className="h-4 w-4 text-purple-600" />
-              {isGeneratingPatterns ? 'Generating...' : 'Generate AI Patterns'}
-            </Button>
-          </div>
-          
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter pattern (e.g. jquery, react, webpack)"
-              value={newPattern}
-              onChange={(e) => setNewPattern(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addCustomPattern()}
-              className="flex-1"
-            />
-            <Button onClick={addCustomPattern} size="sm">
-              <Plus className="h-4 w-4" />
-              Add
-            </Button>
-          </div>
-          
-          {customPatterns.length > 0 && (
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Active Patterns ({customPatterns.length})</Label>
-              <div className="flex flex-wrap gap-2">
-                {customPatterns.map((pattern, index) => (
-                  <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                    {pattern}
-                    <X 
-                      className="h-3 w-3 cursor-pointer hover:text-red-500" 
-                      onClick={() => removeCustomPattern(pattern)}
-                    />
-                  </Badge>
-                ))}
-              </div>
+          {performanceOptions.competitorAnalysis && (
+            <div className="mt-3 p-3 border rounded bg-white">
+              <Label className="text-sm font-medium mb-2 block">
+                Competitor URLs (for benchmarking):
+              </Label>
+              <Textarea
+                placeholder="Enter competitor URLs, one per line..."
+                value={performanceOptions.competitorUrls.join('\n')}
+                onChange={(e) => {
+                  const urls = e.target.value.split('\n').filter(url => url.trim());
+                  setPerformanceOptions(prev => ({ ...prev, competitorUrls: urls }));
+                }}
+                className="min-h-20"
+              />
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
 
-        {/* AI Analysis Toggle */}
-        <div className="flex items-center justify-between pt-4 border-t">
-          <div className="flex items-center gap-2">
-            <Brain className="h-4 w-4 text-purple-600" />
-            <Label htmlFor="ai-analysis" className="text-sm">
-              AI-Powered Comprehensive Analysis
-            </Label>
-          </div>
-          <Switch
-            id="ai-analysis"
-            checked={aiAnalysisEnabled}
-            onCheckedChange={setAiAnalysisEnabled}
-            disabled={isProcessing}
-          />
+  const renderPatternsSection = () => (
+    <div className="space-y-4">
+      <Label htmlFor="custom-patterns" className="text-sm font-medium block">
+        Custom Patterns (one per line):
+      </Label>
+      <Textarea
+        id="custom-patterns"
+        placeholder="Enter custom patterns, one per line..."
+        className="min-h-[100px]"
+        value={customPatterns.join("\n")}
+        onChange={handlePatternChange}
+      />
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Label htmlFor="urls" className="text-sm font-medium block mb-2">
+          URLs (comma-separated):
+        </Label>
+        <Input
+          type="text"
+          id="urls"
+          placeholder="Enter URLs, separated by commas"
+          onChange={handleUrlChange}
+        />
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="basic">Basic Settings</TabsTrigger>
+          <TabsTrigger value="advanced">Deep Search</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="patterns">Patterns</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="basic" className="space-y-4">
+          {renderBasicOptions()}
+        </TabsContent>
+
+        <TabsContent value="advanced" className="space-y-4">
+          {renderDeepSearchOptions()}
+        </TabsContent>
+
+        <TabsContent value="performance" className="space-y-4">
+          {renderPerformanceOptions()}
+        </TabsContent>
+
+        <TabsContent value="patterns" className="space-y-4">
+          {renderPatternsSection()}
+        </TabsContent>
+      </Tabs>
+
+      <div className="flex justify-between">
+        <Button onClick={handleAnalyze} disabled={isLoading}>
+          {isLoading ? "Analyzing..." : "Analyze"}
+        </Button>
+        <div>
+          <FileInput onFileSelect={onFileUpload} />
         </div>
-        <p className="text-xs text-gray-500 ml-6">
-          GPT-4 powered deep technology analysis, architecture insights, and optimization recommendations
-        </p>
+      </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-4">
-          <Button
-            onClick={handleStartAnalysis}
-            disabled={isProcessing || !canAnalyze}
-            className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-          >
-            <Play className="h-4 w-4 mr-2" />
-            {isProcessing ? 'Analyzing...' : 'Start Deep Analysis'}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={onClearAll}
-            disabled={isProcessing}
-          >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Clear
-          </Button>
+      {demoLimit && (
+        <div className="text-red-500 text-sm">
+          Demo limit reached. Please sign up to analyze more websites.
         </div>
+      )}
 
-        {/* Demo limit reached message */}
-        {!user && isDemoLimitReached && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
-            <p className="text-sm text-red-800 mb-3">
-              🚫 You've used all 5 free demo searches. Sign up or log in for unlimited access!
-            </p>
-            <div className="flex gap-2 justify-center">
-              <Button size="sm" asChild>
-                <a href="/auth/signup">Sign Up Free</a>
-              </Button>
-              <Button size="sm" variant="outline" asChild>
-                <a href="/auth/login">Log In</a>
-              </Button>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      <Button variant="secondary" onClick={onDemoAnalyze} disabled={demoLimit}>
+        Run Demo
+      </Button>
+    </div>
   );
 };

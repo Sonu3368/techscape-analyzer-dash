@@ -10,6 +10,7 @@ interface AnalysisRequest {
   urls: string[];
   deepSearchEnabled: boolean;
   aiAnalysisEnabled: boolean;
+  performanceAnalysisEnabled?: boolean;
   searchMode: 'basic' | 'advanced' | 'full';
   deepSearchOptions: {
     analyzeHtmlComments: boolean;
@@ -22,6 +23,15 @@ interface AnalysisRequest {
     analyzeHttpHeaders: boolean;
     analyzeCookiePatterns: boolean;
     detectBehavioralPatterns: boolean;
+  };
+  performanceOptions?: {
+    coreWebVitals: boolean;
+    networkAnalysis: boolean;
+    accessibilityCheck: boolean;
+    seoAnalysis: boolean;
+    codeQualityCheck: boolean;
+    competitorAnalysis: boolean;
+    competitorUrls: string[];
   };
   customPatterns: string[];
 }
@@ -58,6 +68,30 @@ interface AnalysisResult {
     patterns: string[];
     recommendations: string[];
     aiGeneratedPatterns: string[];
+  };
+  performanceAnalysis?: {
+    overallScore: number;
+    executiveSummary: {
+      criticalIssues: string[];
+      topRecommendations: string[];
+    };
+    coreWebVitals: {
+      lcp: { value: number; score: number; severity: string; description: string; recommendation: string };
+      cls: { value: string; score: number; severity: string; description: string; recommendation: string };
+      inp: { value: number; score: number; severity: string; description: string; recommendation: string };
+    };
+    sections: {
+      network: {
+        title: string;
+        metrics: { name: string; value: string; score: number; severity: string; description: string; recommendation: string; codeExample: { bad: string; good: string } }[];
+        insights: string[];
+      };
+      html: { title: string; metrics: any[]; insights: any[] };
+      css: { title: string; metrics: any[]; insights: any[] };
+      javascript: { title: string; metrics: any[]; insights: any[] };
+      accessibility: { title: string; metrics: any[]; insights: any[] };
+      seo: { title: string; metrics: any[]; insights: any[] };
+    };
   };
 }
 
@@ -871,6 +905,143 @@ Respond in JSON format with:
   }
 }
 
+async function performComprehensivePerformanceAnalysis(html: string, url: string, headers: Record<string, string>, options: any) {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  if (!openAIApiKey) {
+    console.log('OpenAI API key not found, skipping performance analysis');
+    return null;
+  }
+
+  try {
+    const truncatedHtml = html.slice(0, 12000); // Larger sample for performance analysis
+    
+    const competitorContext = options.competitorAnalysis && options.competitorUrls.length > 0 
+      ? `\n\nCOMPETITOR ANALYSIS: Compare with these competitor URLs: ${options.competitorUrls.join(', ')}`
+      : '';
+
+    const prompt = `Act as a Senior Full-Stack Performance Engineer. Conduct a deep, multi-layered analysis of this website.
+
+URL: ${url}
+HTML Sample: ${truncatedHtml}
+HTTP Headers: ${JSON.stringify(headers)}${competitorContext}
+
+Your analysis must be comprehensive, mimicking browser developer tools investigation. Provide a structured report with:
+
+### 1. Executive Summary & Prioritized Actions
+- Top 3-5 critical issues impacting UX, performance, and SEO
+- Brief problem explanation and recommended fixes
+
+### 2. Deep Analysis
+
+**A. Network & Performance Waterfall Analysis**
+- Initial load and render-blocking resources
+- Resource optimization (compression, modern formats, caching)
+- Core Web Vitals inference (LCP, CLS, INP)
+- Connection analysis (HTTP version, TTFB)
+
+**B. HTML, SEO & Accessibility Analysis**
+- Semantic structure evaluation
+- SEO metadata assessment
+- Accessibility gaps identification
+- DOM complexity analysis
+
+**C. CSS & Styling Analysis**
+- Efficiency and redundancy check
+- Render-blocking CSS identification
+- Responsiveness implementation
+- Animation performance analysis
+
+**D. JavaScript & Interactivity Analysis**
+- Bundle size and execution analysis
+- Third-party script impact
+- Modern practices evaluation
+- Performance bottleneck identification
+
+### 3. Actionable Recommendations & Code Examples
+For each recommendation:
+- Clear problem statement
+- Concrete solution
+- Code examples (bad vs good)
+
+Respond in JSON format with this structure:
+{
+  "overallScore": 85,
+  "executiveSummary": {
+    "criticalIssues": ["Issue 1", "Issue 2"],
+    "topRecommendations": ["Rec 1", "Rec 2"]
+  },
+  "coreWebVitals": {
+    "lcp": {"value": 2500, "score": 75, "severity": "warning", "description": "...", "recommendation": "..."},
+    "cls": {"value": "0.15", "score": 60, "severity": "warning", "description": "...", "recommendation": "..."},
+    "inp": {"value": 150, "score": 80, "severity": "good", "description": "...", "recommendation": "..."}
+  },
+  "sections": {
+    "network": {
+      "title": "Network & Performance",
+      "metrics": [
+        {
+          "name": "Resource Compression",
+          "value": "Partial",
+          "score": 70,
+          "severity": "warning",
+          "description": "...",
+          "recommendation": "...",
+          "codeExample": {"bad": "...", "good": "..."}
+        }
+      ],
+      "insights": ["Insight 1", "Insight 2"]
+    },
+    "html": {"title": "HTML & SEO", "metrics": [...], "insights": [...]},
+    "css": {"title": "CSS & Styling", "metrics": [...], "insights": [...]},
+    "javascript": {"title": "JavaScript", "metrics": [...], "insights": [...]},
+    "accessibility": {"title": "Accessibility", "metrics": [...], "insights": [...]},
+    "seo": {"title": "SEO Analysis", "metrics": [...], "insights": [...]}
+  }
+}`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a Senior Full-Stack Performance Engineer. Provide comprehensive website performance analysis in valid JSON format with detailed metrics, scores, and actionable recommendations.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 4000,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    
+    try {
+      return JSON.parse(content);
+    } catch {
+      console.error('Failed to parse performance analysis JSON');
+      return null;
+    }
+  } catch (error) {
+    console.error('Performance analysis error:', error);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -887,7 +1058,8 @@ serve(async (req) => {
       const { 
         urls, 
         deepSearchEnabled, 
-        aiAnalysisEnabled, 
+        aiAnalysisEnabled,
+        performanceAnalysisEnabled = false,
         searchMode = 'full',
         deepSearchOptions = {
           analyzeHtmlComments: true,
@@ -901,14 +1073,20 @@ serve(async (req) => {
           analyzeCookiePatterns: true,
           detectBehavioralPatterns: true,
         },
+        performanceOptions = {
+          coreWebVitals: true,
+          networkAnalysis: true,
+          accessibilityCheck: true,
+          seoAnalysis: true,
+          codeQualityCheck: true,
+          competitorAnalysis: false,
+          competitorUrls: [],
+        },
         customPatterns = []
       } = requestData;
 
-      console.log('Starting enhanced deep analysis for URLs:', urls);
-      console.log('Search mode:', searchMode);
-      console.log('Deep search enabled:', deepSearchEnabled);
-      console.log('AI analysis enabled:', aiAnalysisEnabled);
-      console.log('Deep search options:', deepSearchOptions);
+      console.log('Starting comprehensive analysis for URLs:', urls);
+      console.log('Performance analysis enabled:', performanceAnalysisEnabled);
 
       const jobId = crypto.randomUUID();
       const results: AnalysisResult[] = [];
@@ -935,31 +1113,6 @@ serve(async (req) => {
             technologies = [...technologies, ...deepFindings];
           }
 
-          // Generate AI patterns if enabled
-          let aiGeneratedPatterns: string[] = [];
-          if (deepSearchOptions.aiPatternDetection && aiAnalysisEnabled) {
-            console.log('Generating AI patterns for:', url);
-            aiGeneratedPatterns = await generateAIPatterns(websiteData.html, url, technologies);
-            
-            // Use AI-generated patterns for additional detection
-            for (const pattern of aiGeneratedPatterns) {
-              try {
-                const regex = new RegExp(pattern, 'i');
-                if (regex.test(websiteData.html)) {
-                  technologies.push({
-                    name: `AI-Detected: ${pattern}`,
-                    category: 'AI Pattern Detection',
-                    confidence: 0.7,
-                    detectionMethod: 'AI-Generated Pattern',
-                    patterns: [pattern],
-                  });
-                }
-              } catch (error) {
-                console.log('Invalid regex pattern generated:', pattern);
-              }
-            }
-          }
-          
           // Remove duplicates and sort by confidence
           const uniqueTechs = technologies.reduce((acc, tech) => {
             const existing = acc.find(t => t.name === tech.name);
@@ -991,13 +1144,24 @@ serve(async (req) => {
 
           // Perform AI analysis if enabled
           if (aiAnalysisEnabled) {
-            console.log('Performing enhanced AI analysis for:', url);
+            console.log('Performing AI analysis for:', url);
             const aiResult = await performAIAnalysis(websiteData.html, url, uniqueTechs);
             if (aiResult) {
-              result.aiAnalysis = {
-                ...aiResult,
-                aiGeneratedPatterns: aiGeneratedPatterns,
-              };
+              result.aiAnalysis = aiResult;
+            }
+          }
+
+          // Perform comprehensive performance analysis if enabled
+          if (performanceAnalysisEnabled) {
+            console.log('Performing comprehensive performance analysis for:', url);
+            const performanceResult = await performComprehensivePerformanceAnalysis(
+              websiteData.html, 
+              url, 
+              websiteData.headers, 
+              performanceOptions
+            );
+            if (performanceResult) {
+              result.performanceAnalysis = performanceResult;
             }
           }
 

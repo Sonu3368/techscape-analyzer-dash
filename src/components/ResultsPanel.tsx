@@ -1,10 +1,11 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { PerformanceAnalysisPanel } from './PerformanceAnalysisPanel';
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -43,6 +44,7 @@ interface AnalysisResult {
     patterns: string[];
     recommendations: string[];
   };
+  performanceAnalysis?: any; // Performance analysis result
 }
 
 interface AnalysisJob {
@@ -59,6 +61,11 @@ interface ResultsPanelProps {
 
 export const ResultsPanel: React.FC<ResultsPanelProps> = ({ job }) => {
   const [expandedUrls, setExpandedUrls] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<{ [key: string]: string }>({});
+
+  const setActiveTabForUrl = (url: string, tab: string) => {
+    setActiveTab(prev => ({ ...prev, [url]: tab }));
+  };
 
   const toggleExpanded = (url: string) => {
     const newExpanded = new Set(expandedUrls);
@@ -163,120 +170,147 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ job }) => {
                       </div>
                     )}
 
-                    {/* Detected Technologies */}
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                        <Code className="w-4 h-4" />
-                        Detected Technologies ({result.technologies.length})
-                      </h4>
-                      
-                      <div className="grid gap-3">
-                        {result.technologies.map((tech, techIndex) => (
-                          <div key={techIndex} className="p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-gray-900">{tech.name}</span>
-                                {tech.version && (
-                                  <Badge variant="outline" className="text-xs">
-                                    v{tech.version}
+                    {/* Tab Navigation for Results */}
+                    <Tabs 
+                      value={activeTab[result.url] || 'technologies'} 
+                      onValueChange={(tab) => setActiveTabForUrl(result.url, tab)}
+                    >
+                      <TabsList className="grid grid-cols-3 w-full">
+                        <TabsTrigger value="technologies">Technologies</TabsTrigger>
+                        <TabsTrigger value="ai-analysis">AI Analysis</TabsTrigger>
+                        <TabsTrigger value="performance">Performance</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="technologies">
+                        {/* Detected Technologies */}
+                        <div className="space-y-4">
+                          <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                            <Code className="w-4 h-4" />
+                            Detected Technologies ({result.technologies.length})
+                          </h4>
+                          
+                          <div className="grid gap-3">
+                            {result.technologies.map((tech, techIndex) => (
+                              <div key={techIndex} className="p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-gray-900">{tech.name}</span>
+                                    {tech.version && (
+                                      <Badge variant="outline" className="text-xs">
+                                        v{tech.version}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1">
+                                      {getMethodIcon(tech.detectionMethod)}
+                                      <span className="text-xs text-gray-500">{tech.detectionMethod}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <div className={`w-2 h-2 rounded-full ${getConfidenceColor(tech.confidence)}`} />
+                                      <span className="text-xs text-gray-500">
+                                        {Math.round(tech.confidence * 100)}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-center justify-between">
+                                  <Badge 
+                                    variant="outline" 
+                                    className={categoryColors[tech.category] || 'bg-gray-100 text-gray-800'}
+                                  >
+                                    {tech.category}
                                   </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1">
-                                  {getMethodIcon(tech.detectionMethod)}
-                                  <span className="text-xs text-gray-500">{tech.detectionMethod}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <div className={`w-2 h-2 rounded-full ${getConfidenceColor(tech.confidence)}`} />
-                                  <span className="text-xs text-gray-500">
-                                    {Math.round(tech.confidence * 100)}%
-                                  </span>
+                                  
+                                  {tech.patterns.length > 0 && (
+                                    <div className="text-xs text-gray-500">
+                                      Patterns: {tech.patterns.slice(0, 2).join(', ')}
+                                      {tech.patterns.length > 2 && ` +${tech.patterns.length - 2} more`}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-                            </div>
-                            
-                            <div className="flex items-center justify-between">
-                              <Badge 
-                                variant="outline" 
-                                className={categoryColors[tech.category] || 'bg-gray-100 text-gray-800'}
-                              >
-                                {tech.category}
-                              </Badge>
-                              
-                              {tech.patterns.length > 0 && (
-                                <div className="text-xs text-gray-500">
-                                  Patterns: {tech.patterns.slice(0, 2).join(', ')}
-                                  {tech.patterns.length > 2 && ` +${tech.patterns.length - 2} more`}
-                                </div>
-                              )}
-                            </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* AI Analysis Results */}
-                    {result.aiAnalysis && (
-                      <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
-                        <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                          <Brain className="w-4 h-4 text-purple-600" />
-                          AI Analysis
-                        </h4>
-                        
-                        {/* AI Summary */}
-                        <div className="p-3 bg-white rounded border">
-                          <h5 className="font-medium text-gray-900 mb-2">Summary</h5>
-                          <p className="text-sm text-gray-700">{result.aiAnalysis.summary}</p>
                         </div>
+                      </TabsContent>
 
-                        {/* Additional Technologies */}
-                        {result.aiAnalysis.additionalTechnologies.length > 0 && (
-                          <div className="p-3 bg-white rounded border">
-                            <h5 className="font-medium text-gray-900 mb-2">
-                              Additional Technologies ({result.aiAnalysis.additionalTechnologies.length})
-                            </h5>
-                            <div className="flex flex-wrap gap-2">
-                              {result.aiAnalysis.additionalTechnologies.map((tech, index) => (
-                                <Badge key={index} variant="secondary" className="text-xs">
-                                  {tech.name} ({Math.round(tech.confidence * 100)}%)
-                                </Badge>
-                              ))}
+                      <TabsContent value="ai-analysis">
+                        {result.aiAnalysis ? (
+                          <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                            {/* AI Summary */}
+                            <div className="p-3 bg-white rounded border">
+                              <h5 className="font-medium text-gray-900 mb-2">Summary</h5>
+                              <p className="text-sm text-gray-700">{result.aiAnalysis.summary}</p>
                             </div>
-                          </div>
-                        )}
 
-                        {/* Patterns */}
-                        {result.aiAnalysis.patterns.length > 0 && (
-                          <div className="p-3 bg-white rounded border">
-                            <h5 className="font-medium text-gray-900 mb-2">Observed Patterns</h5>
-                            <ul className="space-y-1">
-                              {result.aiAnalysis.patterns.map((pattern, index) => (
-                                <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                                  <span className="w-1 h-1 bg-purple-400 rounded-full mt-2 flex-shrink-0" />
-                                  {pattern}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
+                            {/* Additional Technologies */}
+                            {result.aiAnalysis.additionalTechnologies.length > 0 && (
+                              <div className="p-3 bg-white rounded border">
+                                <h5 className="font-medium text-gray-900 mb-2">
+                                  Additional Technologies ({result.aiAnalysis.additionalTechnologies.length})
+                                </h5>
+                                <div className="flex flex-wrap gap-2">
+                                  {result.aiAnalysis.additionalTechnologies.map((tech, index) => (
+                                    <Badge key={index} variant="secondary" className="text-xs">
+                                      {tech.name} ({Math.round(tech.confidence * 100)}%)
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
 
-                        {/* Recommendations */}
-                        {result.aiAnalysis.recommendations.length > 0 && (
-                          <div className="p-3 bg-white rounded border">
-                            <h5 className="font-medium text-gray-900 mb-2">Recommendations</h5>
-                            <ul className="space-y-1">
-                              {result.aiAnalysis.recommendations.map((rec, index) => (
-                                <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
-                                  <span className="w-1 h-1 bg-blue-400 rounded-full mt-2 flex-shrink-0" />
-                                  {rec}
-                                </li>
-                              ))}
-                            </ul>
+                            {/* Patterns */}
+                            {result.aiAnalysis.patterns.length > 0 && (
+                              <div className="p-3 bg-white rounded border">
+                                <h5 className="font-medium text-gray-900 mb-2">Observed Patterns</h5>
+                                <ul className="space-y-1">
+                                  {result.aiAnalysis.patterns.map((pattern, index) => (
+                                    <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
+                                      <span className="w-1 h-1 bg-purple-400 rounded-full mt-2 flex-shrink-0" />
+                                      {pattern}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {/* Recommendations */}
+                            {result.aiAnalysis.recommendations.length > 0 && (
+                              <div className="p-3 bg-white rounded border">
+                                <h5 className="font-medium text-gray-900 mb-2">Recommendations</h5>
+                                <ul className="space-y-1">
+                                  {result.aiAnalysis.recommendations.map((rec, index) => (
+                                    <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
+                                      <span className="w-1 h-1 bg-blue-400 rounded-full mt-2 flex-shrink-0" />
+                                      {rec}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="p-4 bg-gray-50 border rounded-lg text-center">
+                            <p className="text-gray-600">AI analysis was not performed for this URL.</p>
                           </div>
                         )}
-                      </div>
-                    )}
+                      </TabsContent>
+
+                      <TabsContent value="performance">
+                        {result.performanceAnalysis ? (
+                          <PerformanceAnalysisPanel result={result.performanceAnalysis} />
+                        ) : (
+                          <div className="p-4 bg-gray-50 border rounded-lg text-center">
+                            <p className="text-gray-600">Performance analysis was not performed for this URL.</p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Enable performance analysis in the input panel to get comprehensive performance insights.
+                            </p>
+                          </div>
+                        )}
+                      </TabsContent>
+                    </Tabs>
                   </div>
                 )}
               </CardContent>
