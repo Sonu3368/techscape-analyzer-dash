@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Upload, Play, RotateCcw, FileText, Zap, Brain, Settings, Plus, X, Sparkles, Code, Globe, Cookie, MousePointer } from 'lucide-react';
+import { Upload, Play, RotateCcw, FileText, Zap, Brain, Settings, Plus, X, Sparkles, Code, Globe, Cookie, MousePointer, Trash2 } from 'lucide-react';
 import { DemoCounter } from '@/components/DemoCounter';
 import { useDemoLimit } from '@/hooks/useDemoLimit';
 import { useAuth } from '@/hooks/useAuth';
@@ -200,6 +200,14 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     } finally {
       setIsGeneratingPatterns(false);
     }
+  };
+
+  const clearAllPatterns = () => {
+    setCustomPatterns([]);
+    toast({
+      title: "Patterns Cleared",
+      description: "All custom patterns have been removed",
+    });
   };
 
   const addCustomPattern = () => {
@@ -566,20 +574,32 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           </div>
         )}
 
-        {/* Custom Patterns with AI Generation */}
+        {/* Custom Patterns with AI Generation and Clear Button */}
         <div className="space-y-3 pt-4 border-t">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium">Custom Search Patterns</Label>
-            <Button
-              onClick={generateAiPatterns}
-              disabled={isGeneratingPatterns || isProcessing}
-              size="sm"
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Sparkles className="h-4 w-4 text-purple-600" />
-              {isGeneratingPatterns ? 'Generating...' : 'Generate AI Patterns'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={generateAiPatterns}
+                disabled={isGeneratingPatterns || isProcessing}
+                size="sm"
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Sparkles className="h-4 w-4 text-purple-600" />
+                {isGeneratingPatterns ? 'Generating...' : 'Generate AI Patterns'}
+              </Button>
+              <Button
+                onClick={clearAllPatterns}
+                disabled={isProcessing || customPatterns.length === 0}
+                size="sm"
+                variant="outline"
+                className="flex items-center gap-2 text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4" />
+                Clear All
+              </Button>
+            </div>
           </div>
           
           <div className="flex gap-2">
@@ -619,7 +639,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           <div className="flex items-center gap-2">
             <Brain className="h-4 w-4 text-purple-600" />
             <Label htmlFor="ai-analysis" className="text-sm">
-              AI-Powered Comprehensive Analysis
+              AI-Powered Strategic Competitive Analysis
             </Label>
           </div>
           <Switch
@@ -630,7 +650,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           />
         </div>
         <p className="text-xs text-gray-500 ml-6">
-          GPT-4 powered deep technology analysis, architecture insights, and optimization recommendations
+          Advanced strategic technology analysis with competitive benchmarking, SEO analysis, and actionable recommendations
         </p>
 
         {/* Action Buttons */}
@@ -641,7 +661,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
           >
             <Play className="h-4 w-4 mr-2" />
-            {isProcessing ? 'Analyzing...' : 'Start Deep Analysis'}
+            {isProcessing ? 'Analyzing...' : 'Start Strategic Analysis'}
           </Button>
           <Button
             variant="outline"

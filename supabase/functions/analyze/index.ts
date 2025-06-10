@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -58,12 +59,19 @@ interface AnalysisResult {
     patterns: string[];
     recommendations: string[];
     aiGeneratedPatterns: string[];
+    strategicAnalysis?: {
+      executiveSummary: string;
+      technologyProfile: string;
+      competitiveLandscape: string;
+      strategicOpportunities: string;
+      analysisLimitations: string;
+    };
   };
 }
 
-// Enhanced technology detection patterns with deeper analysis capabilities
+// Enhanced technology detection patterns
 const TECH_PATTERNS = {
-  // Frontend Frameworks with enhanced detection
+  // Frontend Frameworks
   'React': {
     patterns: [/react/i, /_react/i, /react-dom/i, /ReactDOM/i, /data-reactid/i, /data-reactroot/i],
     category: 'Frontend Framework',
@@ -91,7 +99,7 @@ const TECH_PATTERNS = {
     category: 'Frontend Framework',
     files: ['/angular', '/ng-', 'angular.min.js', 'angular.js'],
     headers: ['x-angular'],
-    elements: ['<app-root>', 'ng-app', 'ng-controller', 'ng-repeat', '[ngFor]', '*ngIf'],
+    elements: ['<app-root>', 'ng-app', 'ng-controller', 'ng-repeat', '\\[ngFor\\]', '\\*ngIf'],
     cssClasses: ['ng-', 'angular-'],
     comments: ['angular', 'google'],
     inlineScripts: ['angular.module', 'ng-app'],
@@ -104,15 +112,7 @@ const TECH_PATTERNS = {
     elements: ['<script id="__NEXT_DATA__">', '__NEXT_DATA__'],
     comments: ['next.js', 'vercel'],
   },
-  'Nuxt.js': {
-    patterns: [/nuxt/i, /_nuxt/i, /__NUXT__/i],
-    category: 'Frontend Framework',
-    files: ['/_nuxt/', '_nuxt'],
-    elements: ['<div id="__nuxt">', '__NUXT__'],
-    comments: ['nuxt', 'nuxtjs'],
-  },
-  
-  // CSS Frameworks with enhanced detection
+  // CSS Frameworks
   'Bootstrap': {
     patterns: [/bootstrap/i, /btn-/i, /col-/i, /container-fluid/i],
     category: 'CSS Framework',
@@ -127,22 +127,7 @@ const TECH_PATTERNS = {
     cssClasses: ['bg-', 'text-', 'p-', 'm-', 'w-', 'h-', 'flex', 'grid', 'space-', 'divide-'],
     comments: ['tailwind', 'tailwindcss'],
   },
-  'Bulma': {
-    patterns: [/bulma/i, /is-\w+/i, /has-\w+/i],
-    category: 'CSS Framework',
-    files: ['/bulma', 'bulma.css'],
-    cssClasses: ['is-', 'has-', 'column', 'columns', 'button', 'field'],
-    comments: ['bulma'],
-  },
-  'Foundation': {
-    patterns: [/foundation/i, /zurb/i],
-    category: 'CSS Framework',
-    files: ['/foundation', 'foundation.css'],
-    cssClasses: ['grid-x', 'cell', 'callout', 'reveal'],
-    comments: ['foundation', 'zurb'],
-  },
-  
-  // JavaScript Libraries with enhanced detection
+  // JavaScript Libraries
   'jQuery': {
     patterns: [/jquery/i, /\$\(/i, /jQuery/i],
     category: 'JavaScript Library',
@@ -150,35 +135,13 @@ const TECH_PATTERNS = {
     inlineScripts: ['$(document)', 'jQuery(', '$.ajax'],
     comments: ['jquery', 'john resig'],
   },
-  'Lodash': {
-    patterns: [/lodash/i, /_\./i],
-    category: 'JavaScript Library',
-    files: ['lodash.min.js', 'lodash.js'],
-    inlineScripts: ['_.map', '_.filter', '_.reduce'],
-    comments: ['lodash'],
-  },
-  'D3.js': {
-    patterns: [/d3\.js/i, /d3\./i],
-    category: 'Data Visualization',
-    files: ['d3.min.js', 'd3.js'],
-    inlineScripts: ['d3.select', 'd3.scale'],
-    comments: ['d3', 'data driven documents'],
-  },
-  
-  // Backend Technologies with enhanced detection
+  // Backend Technologies
   'Node.js': {
     patterns: [/node\.js/i, /nodejs/i],
     category: 'Backend Runtime',
     headers: ['x-powered-by'],
     cookies: ['connect.sid', 'express-session'],
     comments: ['node.js', 'nodejs'],
-  },
-  'Express': {
-    patterns: [/express/i],
-    category: 'Backend Framework',
-    headers: ['x-powered-by'],
-    cookies: ['connect.sid'],
-    comments: ['express', 'expressjs'],
   },
   'Django': {
     patterns: [/django/i, /csrftoken/i],
@@ -187,37 +150,6 @@ const TECH_PATTERNS = {
     cookies: ['csrftoken', 'sessionid', 'django_language'],
     comments: ['django'],
   },
-  'Laravel': {
-    patterns: [/laravel/i, /laravel_session/i],
-    category: 'Backend Framework',
-    cookies: ['laravel_session', 'XSRF-TOKEN'],
-    comments: ['laravel'],
-  },
-  'ASP.NET': {
-    patterns: [/asp\.net/i, /aspnet/i, /__VIEWSTATE/i],
-    category: 'Backend Framework',
-    headers: ['x-powered-by', 'x-aspnet-version'],
-    elements: ['__VIEWSTATE', '__EVENTVALIDATION', 'aspNetHidden'],
-    cookies: ['ASP.NET_SessionId'],
-    comments: ['asp.net', 'microsoft'],
-  },
-  'PHP': {
-    patterns: [/php/i, /\.php/i],
-    category: 'Backend Language',
-    headers: ['x-powered-by'],
-    cookies: ['PHPSESSID'],
-    comments: ['php'],
-  },
-  'Ruby on Rails': {
-    patterns: [/rails/i, /ruby/i],
-    category: 'Backend Framework',
-    headers: ['x-powered-by'],
-    cookies: ['_session_id'],
-    files: ['/app/controllers/', '/assets/'],
-    comments: ['rails', 'ruby on rails'],
-  },
-  
-  // CMS with enhanced detection
   'WordPress': {
     patterns: [/wp-content/i, /wp-includes/i, /wordpress/i, /wp-admin/i],
     category: 'Content Management System',
@@ -228,51 +160,7 @@ const TECH_PATTERNS = {
     comments: ['wordpress', 'wp'],
     inlineScripts: ['wp-admin', 'wordpress'],
   },
-  'Drupal': {
-    patterns: [/drupal/i, /sites\/default/i, /sites\/all/i],
-    category: 'Content Management System',
-    files: ['/sites/default/', '/sites/all/'],
-    meta: ['generator'],
-    cssClasses: ['drupal'],
-    comments: ['drupal'],
-  },
-  'Joomla': {
-    patterns: [/joomla/i, /administrator\/index\.php/i],
-    category: 'Content Management System',
-    files: ['/administrator/', '/components/'],
-    meta: ['generator'],
-    comments: ['joomla'],
-  },
-  'Shopify': {
-    patterns: [/shopify/i, /cdn\.shopify/i],
-    category: 'E-commerce Platform',
-    files: ['/cdn.shopify.com/', '/shopify/'],
-    meta: ['generator'],
-    comments: ['shopify'],
-  },
-  
-  // CDN & Services with enhanced detection
-  'Cloudflare': {
-    patterns: [/cloudflare/i],
-    category: 'CDN',
-    headers: ['cf-ray', 'server', 'cf-cache-status'],
-    comments: ['cloudflare'],
-  },
-  'Amazon CloudFront': {
-    patterns: [/cloudfront/i],
-    category: 'CDN',
-    headers: ['x-amz-cf-id', 'x-cache'],
-    files: ['cloudfront.net'],
-    comments: ['cloudfront', 'amazon'],
-  },
-  'Google Cloud CDN': {
-    patterns: [/gstatic/i, /googleapis/i],
-    category: 'CDN',
-    files: ['gstatic.com', 'googleapis.com'],
-    comments: ['google', 'gstatic'],
-  },
-  
-  // Analytics with enhanced detection
+  // Analytics
   'Google Analytics': {
     patterns: [/google-analytics/i, /gtag/i, /ga\(/i, /googletagmanager/i],
     category: 'Analytics',
@@ -280,87 +168,12 @@ const TECH_PATTERNS = {
     inlineScripts: ['gtag(', 'ga(', 'GoogleAnalyticsObject'],
     comments: ['google analytics', 'gtag'],
   },
-  'Google Tag Manager': {
-    patterns: [/googletagmanager/i, /gtm\.js/i],
-    category: 'Analytics',
-    files: ['googletagmanager.com'],
-    elements: ['<!-- Google Tag Manager -->'],
-    inlineScripts: ['dataLayer.push'],
-    comments: ['google tag manager', 'gtm'],
-  },
-  'Adobe Analytics': {
-    patterns: [/adobe analytics/i, /omniture/i, /s_code/i],
-    category: 'Analytics',
-    inlineScripts: ['s.t()', 's_code'],
-    comments: ['adobe analytics', 'omniture'],
-  },
-  
-  // Databases (from error messages or exposed info)
-  'MongoDB': {
-    patterns: [/mongodb/i, /mongo/i],
-    category: 'Database',
-    comments: ['mongodb', 'mongo'],
-  },
-  'PostgreSQL': {
-    patterns: [/postgresql/i, /postgres/i],
-    category: 'Database',
-    comments: ['postgresql', 'postgres'],
-  },
-  'MySQL': {
-    patterns: [/mysql/i],
-    category: 'Database',
-    comments: ['mysql'],
-  },
-  'Redis': {
-    patterns: [/redis/i],
-    category: 'Database',
-    comments: ['redis'],
-  },
-  'Supabase': {
-    patterns: [/supabase/i, /supabase\.co/i],
-    category: 'Backend Service',
-    files: ['supabase.co'],
-    comments: ['supabase'],
-  },
-  'Firebase': {
-    patterns: [/firebase/i, /firebaseapp/i],
-    category: 'Backend Service',
-    files: ['firebase', 'firebaseapp.com'],
-    inlineScripts: ['firebase.initializeApp'],
-    comments: ['firebase', 'google firebase'],
-  },
-  
-  // Build Tools and Bundlers
-  'Webpack': {
-    patterns: [/webpack/i, /__webpack/i],
-    category: 'Build Tool',
-    files: ['webpack', '__webpack'],
-    inlineScripts: ['__webpack_require__', 'webpackJsonp'],
-    comments: ['webpack'],
-  },
-  'Vite': {
-    patterns: [/vite/i, /@vite/i],
-    category: 'Build Tool',
-    files: ['/@vite/', '/vite/'],
-    comments: ['vite'],
-  },
-  'Parcel': {
-    patterns: [/parcel/i],
-    category: 'Build Tool',
-    comments: ['parcel'],
-  },
-  'Rollup': {
-    patterns: [/rollup/i],
-    category: 'Build Tool',
-    comments: ['rollup'],
-  },
 };
 
 async function fetchWebsiteData(url: string, searchMode: string) {
   const startTime = Date.now();
   
   try {
-    // Ensure URL has protocol
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://' + url;
     }
@@ -430,12 +243,6 @@ function detectTechnologies(html: string, headers: Record<string, string>, optio
         if (headerValue) {
           confidence += 0.4;
           detectedPatterns.push(`HTTP header: ${header} = ${headerValue}`);
-          
-          // Extract version from headers if possible
-          const versionMatch = headerValue.match(/(\d+\.\d+(?:\.\d+)?)/);
-          if (versionMatch && !techData.version) {
-            techData.version = versionMatch[1];
-          }
         }
       }
     }
@@ -451,69 +258,6 @@ function detectTechnologies(html: string, headers: Record<string, string>, optio
       }
     }
 
-    // HTML elements and attributes detection
-    if (techData.elements && options.detectCustomElements) {
-      for (const element of techData.elements) {
-        if (htmlLower.includes(element.toLowerCase())) {
-          confidence += 0.3;
-          detectedPatterns.push(`HTML element: ${element}`);
-        }
-      }
-    }
-
-    // Cookie pattern detection
-    if (techData.cookies && options.analyzeCookiePatterns) {
-      const setCookieHeader = headers['set-cookie'] || headers['Set-Cookie'] || '';
-      for (const cookie of techData.cookies) {
-        if (setCookieHeader.includes(cookie)) {
-          confidence += 0.3;
-          detectedPatterns.push(`Cookie: ${cookie}`);
-        }
-      }
-    }
-
-    // HTML comments analysis
-    if (techData.comments && options.analyzeHtmlComments) {
-      for (const comment of techData.comments) {
-        const commentRegex = new RegExp(`<!--[^>]*${comment}[^>]*-->`, 'gi');
-        if (commentRegex.test(html)) {
-          confidence += 0.25;
-          detectedPatterns.push(`HTML comment: ${comment}`);
-        }
-      }
-    }
-
-    // Inline scripts analysis
-    if (techData.inlineScripts && options.analyzeInlineScripts) {
-      for (const script of techData.inlineScripts) {
-        const scriptRegex = new RegExp(script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        if (scriptRegex.test(html)) {
-          confidence += 0.3;
-          detectedPatterns.push(`Inline script: ${script}`);
-        }
-      }
-    }
-    
-    // Meta tags analysis for generators and other indicators
-    if (options.analyzeMetaTags && techData.meta) {
-      const metaRegex = /<meta[^>]*name=['"](generator|application-name)['"]/gi;
-      const metaMatches = html.match(metaRegex);
-      if (metaMatches) {
-        for (const match of metaMatches) {
-          if (match.toLowerCase().includes(techName.toLowerCase())) {
-            confidence += 0.4;
-            detectedPatterns.push(`Meta tag: ${match}`);
-            
-            // Extract version from meta tags
-            const versionMatch = match.match(/(\d+\.\d+(?:\.\d+)?)/);
-            if (versionMatch) {
-              techData.version = versionMatch[1];
-            }
-          }
-        }
-      }
-    }
-    
     // Add technology if confidence threshold is met
     if (confidence > 0.2) {
       technologies.push({
@@ -548,203 +292,82 @@ function detectTechnologies(html: string, headers: Record<string, string>, optio
   return technologies;
 }
 
-function performDeepAnalysis(html: string, options: any) {
-  const findings: DetectedTechnology[] = [];
-  
-  // Enhanced HTML comments analysis
-  if (options.analyzeHtmlComments) {
-    const commentRegex = /<!--(.*?)-->/gs;
-    const comments = html.match(commentRegex) || [];
-    
-    for (const comment of comments) {
-      const commentText = comment.toLowerCase();
-      
-      // Check for more framework indicators in comments
-      const frameworkIndicators = {
-        'React': ['react', 'jsx', 'facebook'],
-        'Vue.js': ['vue', 'evan you'],
-        'Angular': ['angular', 'google'],
-        'WordPress': ['wordpress', 'wp'],
-        'Drupal': ['drupal'],
-        'Joomla': ['joomla'],
-        'jQuery': ['jquery', 'john resig'],
-        'Bootstrap': ['bootstrap', 'twitter'],
-        'Tailwind CSS': ['tailwind'],
-      };
-
-      for (const [tech, indicators] of Object.entries(frameworkIndicators)) {
-        for (const indicator of indicators) {
-          if (commentText.includes(indicator)) {
-            findings.push({
-              name: tech,
-              category: 'Frontend Framework',
-              confidence: 0.6,
-              detectionMethod: 'HTML Comment Analysis',
-              patterns: [`Comment contains: ${indicator}`],
-            });
-            break;
-          }
-        }
-      }
-    }
-  }
-  
-  // Enhanced custom elements detection
-  if (options.detectCustomElements) {
-    // Look for custom HTML elements
-    const customElementRegex = /<([a-z]+-[a-z-]+)/gi;
-    const customElements = html.match(customElementRegex) || [];
-    
-    if (customElements.length > 0) {
-      findings.push({
-        name: 'Web Components',
-        category: 'Frontend Technology',
-        confidence: 0.5,
-        detectionMethod: 'Custom Element Detection',
-        patterns: customElements.slice(0, 3),
-      });
-    }
-
-    // Framework-specific elements
-    const frameworkElements = {
-      'Angular': ['<app-root>', 'ng-app', '[ngFor]', '*ngIf', '(click)', '[class]'],
-      'Vue.js': ['v-if', 'v-for', 'v-model', ':class', '@click'],
-      'React': ['data-reactroot', 'data-reactid'],
-    };
-
-    for (const [framework, elements] of Object.entries(frameworkElements)) {
-      for (const element of elements) {
-        if (html.includes(element)) {
-          findings.push({
-            name: framework,
-            category: 'Frontend Framework',
-            confidence: 0.8,
-            detectionMethod: 'Framework Element Detection',
-            patterns: [element],
-          });
-          break;
-        }
-      }
-    }
-  }
-  
-  // Enhanced file path analysis
-  if (options.analyzeFilePaths) {
-    // Extract all script and link sources
-    const scriptRegex = /<script[^>]*src=['"](.*?)['"]/gi;
-    const linkRegex = /<link[^>]*href=['"](.*?)['"]/gi;
-    
-    const scripts = Array.from(html.matchAll(scriptRegex)).map(match => match[1]);
-    const links = Array.from(html.matchAll(linkRegex)).map(match => match[1]);
-    
-    const allPaths = [...scripts, ...links];
-    
-    // Analyze paths for technology indicators
-    const pathIndicators = {
-      'Webpack': ['webpack', '__webpack', 'webpackJsonp'],
-      'Vite': ['/@vite/', '/vite/', '@vite'],
-      'Parcel': ['parcel'],
-      'WordPress': ['/wp-content/themes/', '/wp-content/plugins/', '/wp-includes/'],
-      'Ruby on Rails': ['/app/controllers/', '/assets/'],
-      'Django': ['/static/admin/', '/django/'],
-      'Laravel': ['/vendor/laravel/'],
-      'Next.js': ['/_next/static/', '/_next/'],
-      'Nuxt.js': ['/_nuxt/'],
-      'Shopify': ['/cdn.shopify.com/', '/assets/'],
-    };
-
-    for (const [tech, indicators] of Object.entries(pathIndicators)) {
-      for (const path of allPaths) {
-        for (const indicator of indicators) {
-          if (path.includes(indicator)) {
-            findings.push({
-              name: tech,
-              category: tech.includes('Webpack') || tech.includes('Vite') || tech.includes('Parcel') 
-                       ? 'Build Tool' : 
-                       tech.includes('WordPress') || tech.includes('Shopify') 
-                       ? 'Content Management System' : 'Backend Framework',
-              confidence: 0.8,
-              detectionMethod: 'File Path Analysis',
-              patterns: [path],
-            });
-            break;
-          }
-        }
-      }
-    }
-  }
-  
-  // Enhanced inline script analysis
-  if (options.analyzeInlineScripts) {
-    const scriptBlocks = html.match(/<script[^>]*>(.*?)<\/script>/gis) || [];
-    
-    for (const script of scriptBlocks) {
-      const scriptContent = script.toLowerCase();
-      
-      const scriptIndicators = {
-        'Google Analytics': ['gtag(', 'ga(', 'googleanalyticsobject'],
-        'Google Tag Manager': ['datalayer.push', 'gtm.js'],
-        'jQuery': ['$(document)', 'jquery(', '$.ajax'],
-        'React': ['react.createelement', 'reactdom.render'],
-        'Vue.js': ['new vue(', 'vue.component'],
-        'Angular': ['angular.module', 'ng-app'],
-        'D3.js': ['d3.select', 'd3.scale'],
-        'Firebase': ['firebase.initializeapp'],
-      };
-
-      for (const [tech, indicators] of Object.entries(scriptIndicators)) {
-        for (const indicator of indicators) {
-          if (scriptContent.includes(indicator)) {
-            findings.push({
-              name: tech,
-              category: tech.includes('Analytics') || tech.includes('Tag Manager') 
-                       ? 'Analytics' : 
-                       tech.includes('Firebase') 
-                       ? 'Backend Service' : 'JavaScript Library',
-              confidence: 0.7,
-              detectionMethod: 'Inline Script Analysis',
-              patterns: [indicator],
-            });
-            break;
-          }
-        }
-      }
-    }
-  }
-  
-  return findings;
-}
-
-async function generateAIPatterns(html: string, url: string, existingTechnologies: DetectedTechnology[]) {
+async function performStrategicAIAnalysis(urls: string[], allResults: any[]) {
   const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
   
   if (!openAIApiKey) {
-    console.log('OpenAI API key not found, skipping AI pattern generation');
-    return [];
+    console.log('OpenAI API key not found, skipping strategic AI analysis');
+    return null;
   }
 
   try {
-    const truncatedHtml = html.slice(0, 6000);
-    const existingTechNames = existingTechnologies.map(t => t.name).join(', ');
+    const primaryTarget = urls[0];
+    const competitors = urls.slice(1, 3); // Take up to 2 competitors
     
-    const prompt = `Analyze this website HTML and generate specific search patterns that could help detect additional technologies:
+    // Prepare data for analysis
+    const primaryResult = allResults[0];
+    const competitorResults = allResults.slice(1, 3);
+    
+    const prompt = `Execute a strategic technology and competitive analysis. The primary target is "${primaryTarget}". ${competitors.length > 0 ? `The direct competitors for benchmarking are ${competitors.map(url => `"${url}"`).join(' and ')}.` : ''}
 
-URL: ${url}
-HTML Sample: ${truncatedHtml}
-Already detected: ${existingTechNames}
+The final output should be a concise executive report. Follow these phases meticulously:
 
-Based on the HTML structure, file references, CSS classes, and JavaScript patterns, suggest 10-15 specific search patterns (regex-friendly strings) that could help identify additional technologies, frameworks, or tools not yet detected.
+**Phase 1: Deep Technical Audit of Primary Target**
+Primary Target Data:
+- URL: ${primaryTarget}
+- Technologies Detected: ${primaryResult?.technologies?.map(t => `${t.name} (${t.category}, confidence: ${t.confidence})`).join(', ') || 'None detected'}
+- HTML Sample: ${primaryResult?.html?.slice(0, 3000) || 'Not available'}
 
-Focus on:
-1. Unique CSS class prefixes or naming conventions
-2. Specific JavaScript function names or variables
-3. Unique HTML attributes or data attributes
-4. File path patterns
-5. Meta tag values
-6. Comments patterns
-7. Inline script patterns
+1. **Social & Marketing Tech:**
+   * Identify all advertising pixels and analytics tags (Facebook, Google Ads, LinkedIn, TikTok, etc.).
+   * Detect any marketing automation or CRM scripts (HubSpot, Intercom, etc.).
+   * Find social media widgets, embeds, and sharing plugins.
 
-Return only a JSON array of strings (the patterns), nothing else.`;
+2. **Core Technology Stack:**
+   * Identify the CMS (e.g., WordPress, Shopify, Drupal) via meta tags or file paths.
+   * Identify front-end frameworks and libraries (React, Vue, jQuery, Bootstrap).
+
+3. **SEO & Structured Data:**
+   * Specifically search for structured data scripts (e.g., \`<script type="application/ld+json">\`).
+   * Report what schemas are being used (e.g., \`Organization\`, \`Service\`, \`Product\`, \`FAQPage\`).
+   * Analyze the meta title, description, and heading structure (H1, H2) for SEO focus.
+
+**Phase 2: Competitive Technology Benchmark**
+${competitors.length > 0 ? `
+Competitor Data:
+${competitorResults.map((result, index) => `
+- Competitor ${index + 1}: ${competitors[index]}
+- Technologies: ${result?.technologies?.map(t => `${t.name} (${t.category})`).join(', ') || 'None detected'}
+`).join('')}
+
+1. **Identify Key Differentiators:** For each competitor, focus on identifying their:
+   * Primary social media pixels and analytics tools.
+   * CMS or platform, if identifiable.
+   * Any obvious, high-impact technology the primary target lacks.
+` : 'No competitors provided for analysis.'}
+
+**Phase 3: Synthesis & Strategic Inference**
+1. **User Journey Mapping:** Based on the tech found on the primary target's site, infer their strategy.
+2. **Competitive Gap Analysis:** Create analysis comparing technologies across the websites.
+3. **Hypothesize & Infer:** Form reasonable hypotheses about missing technologies.
+
+**Phase 4: Actionable Recommendations & Reporting**
+Provide a comprehensive report with these exact sections:
+
+**A. Executive Summary:** A brief overview of key findings and top recommendation.
+**B. Primary Target Technology Profile:** (Social, Core Stack, SEO)
+**C. Competitive Landscape:** (Gap analysis)
+**D. Strategic Opportunities & Recommendations:** (3-5 detailed, actionable suggestions)
+**E. Analysis Limitations:** (Explicitly state any limitations)
+
+Respond in JSON format with:
+{
+  "executiveSummary": "brief overview with key findings",
+  "technologyProfile": "detailed analysis of primary target",
+  "competitiveLandscape": "competitive analysis and gaps",
+  "strategicOpportunities": "actionable recommendations",
+  "analysisLimitations": "limitations and assumptions"
+}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -757,7 +380,7 @@ Return only a JSON array of strings (the patterns), nothing else.`;
         messages: [
           {
             role: 'system',
-            content: 'You are a web technology expert. Generate specific search patterns to detect web technologies. Return only valid JSON arrays.'
+            content: 'You are a senior technology strategist and competitive intelligence expert. Provide comprehensive strategic analysis in valid JSON format.'
           },
           {
             role: 'user',
@@ -765,7 +388,7 @@ Return only a JSON array of strings (the patterns), nothing else.`;
           }
         ],
         temperature: 0.3,
-        max_tokens: 500,
+        max_tokens: 2000,
       }),
     });
 
@@ -777,16 +400,20 @@ Return only a JSON array of strings (the patterns), nothing else.`;
     const content = data.choices[0].message.content;
     
     try {
-      const patterns = JSON.parse(content);
-      return Array.isArray(patterns) ? patterns : [];
+      return JSON.parse(content);
     } catch {
-      // Try to extract patterns from non-JSON response
-      const patternMatches = content.match(/"([^"]+)"/g);
-      return patternMatches ? patternMatches.map((p: string) => p.replace(/"/g, '')) : [];
+      // If JSON parsing fails, return a basic structure
+      return {
+        executiveSummary: "Strategic analysis completed with limited data parsing",
+        technologyProfile: content.slice(0, 500),
+        competitiveLandscape: "Analysis completed but data parsing encountered issues",
+        strategicOpportunities: "Please review raw analysis for recommendations",
+        analysisLimitations: "JSON parsing failed - raw analysis available"
+      };
     }
   } catch (error) {
-    console.error('AI pattern generation error:', error);
-    return [];
+    console.error('Strategic AI analysis error:', error);
+    return null;
   }
 }
 
@@ -799,7 +426,6 @@ async function performAIAnalysis(html: string, url: string, technologies: Detect
   }
 
   try {
-    // Truncate HTML for AI analysis (to stay within token limits)
     const truncatedHtml = html.slice(0, 8000);
     
     const prompt = `Analyze this website HTML and provide comprehensive insights about the technologies used:
@@ -857,7 +483,6 @@ Respond in JSON format with:
     try {
       return JSON.parse(content);
     } catch {
-      // If JSON parsing fails, return a basic structure
       return {
         summary: content,
         additionalTechnologies: [],
@@ -905,23 +530,19 @@ serve(async (req) => {
       } = requestData;
 
       console.log('Starting enhanced deep analysis for URLs:', urls);
-      console.log('Search mode:', searchMode);
-      console.log('Deep search enabled:', deepSearchEnabled);
-      console.log('AI analysis enabled:', aiAnalysisEnabled);
-      console.log('Deep search options:', deepSearchOptions);
 
       const jobId = crypto.randomUUID();
       const results: AnalysisResult[] = [];
+      const allWebsiteData: any[] = [];
       
       for (let i = 0; i < urls.length; i++) {
         const url = urls[i];
         console.log(`Processing URL ${i + 1}/${urls.length}: ${url}`);
         
         try {
-          // Fetch website data
           const websiteData = await fetchWebsiteData(url, searchMode);
+          allWebsiteData.push({ url, ...websiteData });
           
-          // Detect technologies with enhanced patterns
           let technologies = detectTechnologies(
             websiteData.html, 
             websiteData.headers, 
@@ -929,38 +550,6 @@ serve(async (req) => {
             customPatterns
           );
           
-          // Perform deep analysis if enabled
-          if (deepSearchEnabled) {
-            const deepFindings = performDeepAnalysis(websiteData.html, deepSearchOptions);
-            technologies = [...technologies, ...deepFindings];
-          }
-
-          // Generate AI patterns if enabled
-          let aiGeneratedPatterns: string[] = [];
-          if (deepSearchOptions.aiPatternDetection && aiAnalysisEnabled) {
-            console.log('Generating AI patterns for:', url);
-            aiGeneratedPatterns = await generateAIPatterns(websiteData.html, url, technologies);
-            
-            // Use AI-generated patterns for additional detection
-            for (const pattern of aiGeneratedPatterns) {
-              try {
-                const regex = new RegExp(pattern, 'i');
-                if (regex.test(websiteData.html)) {
-                  technologies.push({
-                    name: `AI-Detected: ${pattern}`,
-                    category: 'AI Pattern Detection',
-                    confidence: 0.7,
-                    detectionMethod: 'AI-Generated Pattern',
-                    patterns: [pattern],
-                  });
-                }
-              } catch (error) {
-                console.log('Invalid regex pattern generated:', pattern);
-              }
-            }
-          }
-          
-          // Remove duplicates and sort by confidence
           const uniqueTechs = technologies.reduce((acc, tech) => {
             const existing = acc.find(t => t.name === tech.name);
             if (!existing || existing.confidence < tech.confidence) {
@@ -972,7 +561,6 @@ serve(async (req) => {
           
           uniqueTechs.sort((a, b) => b.confidence - a.confidence);
 
-          // Extract metadata
           const titleMatch = websiteData.html.match(/<title[^>]*>([^<]+)<\/title>/i);
           const descMatch = websiteData.html.match(/<meta[^>]*name=['"](description|Description)['"]*[^>]*content=['"](.*?)['"]/i);
           
@@ -989,21 +577,19 @@ serve(async (req) => {
             }
           };
 
-          // Perform AI analysis if enabled
           if (aiAnalysisEnabled) {
             console.log('Performing enhanced AI analysis for:', url);
             const aiResult = await performAIAnalysis(websiteData.html, url, uniqueTechs);
             if (aiResult) {
               result.aiAnalysis = {
                 ...aiResult,
-                aiGeneratedPatterns: aiGeneratedPatterns,
+                aiGeneratedPatterns: [],
               };
             }
           }
 
           results.push(result);
 
-          // Store in database
           await supabase.from('website_scans').insert({
             url: result.url,
             status: 'completed',
@@ -1026,13 +612,16 @@ serve(async (req) => {
           };
           
           results.push(failedResult);
+        }
+      }
 
-          await supabase.from('website_scans').insert({
-            url,
-            status: 'failed',
-            error_message: error.message,
-            response_time: 0,
-          });
+      // Perform strategic analysis if AI is enabled and we have results
+      if (aiAnalysisEnabled && results.length > 0) {
+        console.log('Performing strategic competitive analysis...');
+        const strategicAnalysis = await performStrategicAIAnalysis(urls, allWebsiteData);
+        
+        if (strategicAnalysis && results[0].aiAnalysis) {
+          results[0].aiAnalysis.strategicAnalysis = strategicAnalysis;
         }
       }
 
