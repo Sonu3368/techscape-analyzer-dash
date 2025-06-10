@@ -1,11 +1,30 @@
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
+
+interface AnalysisRequest {
+  urls: string[];
+  deepSearchEnabled: boolean;
+  aiAnalysisEnabled: boolean;
+  searchMode: 'basic' | 'advanced' | 'full';
+  deepSearchOptions: {
+    analyzeHtmlComments: boolean;
+    analyzeMetaTags: boolean;
+    detectCustomElements: boolean;
+    analyzeFilePaths: boolean;
+    aiPatternDetection: boolean;
+    analyzeCssClasses: boolean;
+    analyzeInlineScripts: boolean;
+    analyzeHttpHeaders: boolean;
+    analyzeCookiePatterns: boolean;
+    detectBehavioralPatterns: boolean;
+  };
+  customPatterns: string[];
+}
 
 interface DetectedTechnology {
   name: string;
@@ -16,739 +35,839 @@ interface DetectedTechnology {
   patterns: string[];
 }
 
-interface SocialMediaIntegration {
-  platform: string;
-  type: 'icon' | 'share_button' | 'embedded_feed' | 'social_login' | 'comment_system' | 'widget' | 'pixel' | 'tracking';
-  confidence: number;
-  evidence: string[];
-  urls?: string[];
-}
-
-interface SocialMediaAnalysis {
-  integrations: SocialMediaIntegration[];
-  totalPlatforms: number;
-  engagementFeatures: string[];
-  socialLoginOptions: string[];
-}
-
-// Enhanced technology detection patterns with deep search capabilities
-const ENHANCED_TECHNOLOGY_PATTERNS = {
-  'React': {
-    category: 'Frontend Frameworks',
-    patterns: {
-      scripts: ['react', 'react-dom', 'react.min.js', 'react.production.min.js'],
-      html: ['data-reactroot', '__REACT_DEVTOOLS_GLOBAL_HOOK__', 'ReactDOM'],
-      headers: ['x-powered-by.*react'],
-      meta: ['generator.*react'],
-      files: ['_next/static', 'react-scripts'],
-      css: ['react-', 'jsx-'],
-      comments: ['React', 'ReactJS', 'Created with React']
-    },
-    versionPatterns: [
-      'react@([\\d\\.]+)',
-      'react.*?([\\d\\.]+)',
-      '"react".*?"([\\d\\.]+)"'
-    ]
-  },
-  'Vue.js': {
-    category: 'Frontend Frameworks',
-    patterns: {
-      scripts: ['vue.js', 'vue.min.js', 'vue@', 'vuejs'],
-      html: ['v-if', 'v-for', 'v-model', '__VUE__', 'Vue\\.', 'new Vue'],
-      headers: ['x-powered-by.*vue'],
-      meta: ['generator.*vue'],
-      files: ['vue-', '.vue'],
-      css: ['vue-', 'v-'],
-      comments: ['Vue', 'VueJS', 'Built with Vue']
-    },
-    versionPatterns: [
-      'vue@([\\d\\.]+)',
-      'Vue.*?([\\d\\.]+)',
-      '"vue".*?"([\\d\\.]+)"'
-    ]
-  },
-  'Angular': {
-    category: 'Frontend Frameworks',
-    patterns: {
-      scripts: ['angular', '@angular', 'angular.min.js'],
-      html: ['ng-app', 'ng-controller', 'ng-', 'angular.module', '\\[ng-'],
-      headers: ['x-powered-by.*angular'],
-      meta: ['generator.*angular'],
-      files: ['angular-', '@angular/'],
-      css: ['ng-', 'angular-'],
-      comments: ['Angular', 'AngularJS']
-    },
-    versionPatterns: [
-      'angular@([\\d\\.]+)',
-      '"@angular/core".*?"([\\d\\.]+)"'
-    ]
-  },
-  'jQuery': {
-    category: 'JavaScript Libraries',
-    patterns: {
-      scripts: ['jquery', 'jquery.min.js', 'jquery-'],
-      html: ['jQuery', '\\$\\.', '\\$\\(\\)\\.', 'window\\.jQuery'],
-      headers: [],
-      meta: [],
-      files: ['jquery-', 'js/jquery'],
-      css: ['jquery-ui'],
-      comments: ['jQuery', 'Powered by jQuery']
-    },
-    versionPatterns: [
-      'jquery@([\\d\\.]+)',
-      'jquery.*?([\\d\\.]+)',
-      'jQuery.*?v([\\d\\.]+)'
-    ]
-  },
-  'Bootstrap': {
-    category: 'CSS Frameworks',
-    patterns: {
-      scripts: ['bootstrap.js', 'bootstrap.min.js'],
-      html: ['btn-primary', 'container', 'row', 'col-', 'navbar', 'card'],
-      headers: [],
-      meta: [],
-      files: ['bootstrap', 'css/bootstrap'],
-      css: ['bootstrap', 'btn-', 'col-', 'navbar-'],
-      comments: ['Bootstrap', 'Twitter Bootstrap']
-    },
-    versionPatterns: [
-      'bootstrap@([\\d\\.]+)',
-      'Bootstrap.*?v([\\d\\.]+)'
-    ]
-  },
-  'Tailwind CSS': {
-    category: 'CSS Frameworks',
-    patterns: {
-      scripts: ['tailwindcss'],
-      html: ['tw-', 'prose', 'container mx-auto', 'flex items-center'],
-      headers: [],
-      meta: [],
-      files: ['tailwind', 'tailwindcss'],
-      css: ['tailwind', '@tailwind', 'tw-'],
-      comments: ['Tailwind', 'TailwindCSS']
-    },
-    versionPatterns: [
-      'tailwindcss@([\\d\\.]+)'
-    ]
-  },
-  'Next.js': {
-    category: 'Frontend Frameworks',
-    patterns: {
-      scripts: ['_next/static', 'next.js'],
-      html: ['__NEXT_DATA__', '__next', 'Next\\.js'],
-      headers: ['x-powered-by.*next'],
-      meta: ['generator.*next'],
-      files: ['_next/', '.next/'],
-      css: [],
-      comments: ['Next.js', 'Built with Next']
-    },
-    versionPatterns: [
-      'next@([\\d\\.]+)',
-      '"next".*?"([\\d\\.]+)"'
-    ]
-  },
-  'Nuxt.js': {
-    category: 'Frontend Frameworks',
-    patterns: {
-      scripts: ['_nuxt/', 'nuxt.js'],
-      html: ['__NUXT__', 'window\\.__NUXT__'],
-      headers: ['x-powered-by.*nuxt'],
-      meta: ['generator.*nuxt'],
-      files: ['_nuxt/', '.nuxt/'],
-      css: [],
-      comments: ['Nuxt', 'NuxtJS']
-    },
-    versionPatterns: [
-      'nuxt@([\\d\\.]+)'
-    ]
-  },
-  'WordPress': {
-    category: 'Content Management',
-    patterns: {
-      scripts: ['wp-content', 'wp-includes', 'wp-admin'],
-      html: ['wp-content', 'wp-includes', 'wordpress', 'wp-json'],
-      headers: ['x-powered-by.*wordpress', 'link.*wp-json'],
-      meta: ['generator.*wordpress'],
-      files: ['wp-content/', 'wp-includes/', 'wp-admin/'],
-      css: ['wp-', 'wordpress'],
-      comments: ['WordPress', 'wp-']
-    },
-    versionPatterns: [
-      'WordPress ([\\d\\.]+)',
-      'wp-includes.*?ver=([\\d\\.]+)'
-    ]
-  },
-  'Shopify': {
-    category: 'E-commerce',
-    patterns: {
-      scripts: ['shopify', 'shop.js', 'Shopify\\.'],
-      html: ['myshopify.com', 'Shopify\\.theme', 'shopify-section'],
-      headers: ['server.*shopify'],
-      meta: ['generator.*shopify'],
-      files: ['shopify/', 'cdn.shopify.com'],
-      css: ['shopify-', 'section-'],
-      comments: ['Shopify', 'Powered by Shopify']
-    },
-    versionPatterns: []
-  },
-  'WooCommerce': {
-    category: 'E-commerce',
-    patterns: {
-      scripts: ['woocommerce', 'wc-'],
-      html: ['woocommerce', 'wc-', 'shop_table'],
-      headers: [],
-      meta: ['generator.*woocommerce'],
-      files: ['woocommerce/', 'wc-'],
-      css: ['woocommerce', 'wc-'],
-      comments: ['WooCommerce']
-    },
-    versionPatterns: [
-      'WooCommerce ([\\d\\.]+)'
-    ]
-  },
-  'Magento': {
-    category: 'E-commerce',
-    patterns: {
-      scripts: ['mage/', 'magento'],
-      html: ['mage/', 'magento', 'Mage\\.'],
-      headers: [],
-      meta: ['generator.*magento'],
-      files: ['skin/frontend/', 'js/mage/'],
-      css: ['magento', 'mage-'],
-      comments: ['Magento']
-    },
-    versionPatterns: []
-  },
-  'Google Analytics': {
-    category: 'Analytics & Tracking',
-    patterns: {
-      scripts: ['google-analytics', 'googletagmanager', 'gtag\\(', 'ga\\('],
-      html: ['gtag\\(', 'ga\\(', 'google-analytics'],
-      headers: [],
-      meta: [],
-      files: ['gtm.js', 'analytics.js'],
-      css: [],
-      comments: ['Google Analytics', 'GA']
-    },
-    versionPatterns: []
-  },
-  'Google Tag Manager': {
-    category: 'Analytics & Tracking',
-    patterns: {
-      scripts: ['googletagmanager.com', 'gtm.js'],
-      html: ['GTM-', 'googletagmanager'],
-      headers: [],
-      meta: [],
-      files: [],
-      css: [],
-      comments: ['Google Tag Manager', 'GTM']
-    },
-    versionPatterns: []
-  },
-  'Cloudflare': {
-    category: 'CDN',
-    patterns: {
-      scripts: ['cdnjs.cloudflare.com'],
-      html: [],
-      headers: ['cf-ray', 'server.*cloudflare'],
-      meta: [],
-      files: ['cdnjs.cloudflare.com'],
-      css: [],
-      comments: ['Cloudflare']
-    },
-    versionPatterns: []
-  },
-  'Font Awesome': {
-    category: 'Icon Libraries',
-    patterns: {
-      scripts: ['fontawesome', 'font-awesome'],
-      html: ['fa-', 'fas ', 'far ', 'fab '],
-      headers: [],
-      meta: [],
-      files: ['fontawesome', 'font-awesome'],
-      css: ['fa-', 'font-awesome'],
-      comments: ['Font Awesome']
-    },
-    versionPatterns: [
-      'fontawesome.*?([\\d\\.]+)'
-    ]
-  },
-  'Stripe': {
-    category: 'Payment Processing',
-    patterns: {
-      scripts: ['stripe.com', 'stripe.js'],
-      html: ['Stripe\\(', 'stripe-'],
-      headers: [],
-      meta: [],
-      files: [],
-      css: ['stripe-'],
-      comments: ['Stripe']
-    },
-    versionPatterns: []
-  },
-  'PayPal': {
-    category: 'Payment Processing',
-    patterns: {
-      scripts: ['paypal.com', 'paypal.js'],
-      html: ['paypal-', 'PayPal'],
-      headers: [],
-      meta: [],
-      files: [],
-      css: ['paypal-'],
-      comments: ['PayPal']
-    },
-    versionPatterns: []
-  },
-  'Drupal': {
-    category: 'Content Management',
-    patterns: {
-      scripts: ['drupal'],
-      html: ['drupal', 'Drupal\\.'],
-      headers: ['x-powered-by.*drupal', 'x-drupal-'],
-      meta: ['generator.*drupal'],
-      files: ['sites/default/', 'modules/'],
-      css: ['drupal'],
-      comments: ['Drupal']
-    },
-    versionPatterns: [
-      'Drupal ([\\d\\.]+)'
-    ]
-  },
-  'Joomla': {
-    category: 'Content Management',
-    patterns: {
-      scripts: ['joomla'],
-      html: ['joomla', 'Joomla!'],
-      headers: [],
-      meta: ['generator.*joomla'],
-      files: ['components/', 'modules/'],
-      css: ['joomla'],
-      comments: ['Joomla']
-    },
-    versionPatterns: [
-      'Joomla! ([\\d\\.]+)'
-    ]
-  },
-  'Material-UI': {
-    category: 'UI Frameworks',
-    patterns: {
-      scripts: ['material-ui', '@mui/'],
-      html: ['MuiButton', 'MuiGrid', 'makeStyles'],
-      headers: [],
-      meta: [],
-      files: [],
-      css: ['Mui', 'makeStyles'],
-      comments: ['Material-UI', 'MUI']
-    },
-    versionPatterns: [
-      '@mui/core.*?([\\d\\.]+)'
-    ]
-  },
-  'Ant Design': {
-    category: 'UI Frameworks',
-    patterns: {
-      scripts: ['antd'],
-      html: ['ant-', 'antd'],
-      headers: [],
-      meta: [],
-      files: [],
-      css: ['ant-', 'antd'],
-      comments: ['Ant Design']
-    },
-    versionPatterns: [
-      'antd.*?([\\d\\.]+)'
-    ]
-  }
-};
-
-// Social media detection patterns
-const SOCIAL_MEDIA_PATTERNS = {
-  facebook: {
-    scripts: [
-      'connect.facebook.net',
-      'facebook.com/tr',
-      'fbevents.js',
-      'facebook.net/en_US/fbds.js'
-    ],
-    selectors: [
-      'a\\[href\\*="facebook.com"\\]',
-      '\\.fb-like',
-      '\\.fb-share',
-      '\\.fb-comments',
-      '\\[class\\*="facebook"\\]'
-    ],
-    pixels: ['fbq\\(', 'facebook-pixel', 'FB_PIXEL_ID'],
-    widgets: ['fb-like-box', 'fb-page', 'fb-comments']
-  },
-  google: {
-    scripts: [
-      'googletagmanager.com',
-      'google-analytics.com',
-      'googlesyndication.com',
-      'youtube.com/iframe_api'
-    ],
-    selectors: [
-      'iframe\\[src\\*="youtube.com"\\]',
-      'a\\[href\\*="youtube.com"\\]',
-      'a\\[href\\*="plus.google.com"\\]'
-    ],
-    pixels: ['gtag\\(', 'ga\\(', 'google-analytics'],
-    widgets: ['youtube-player', 'g-plusone']
-  },
-  twitter: {
-    scripts: [
-      'platform.twitter.com',
-      'syndication.twitter.com',
-      'twitter.com/widgets.js'
-    ],
-    selectors: [
-      'a\\[href\\*="twitter.com"\\]',
-      'a\\[href\\*="x.com"\\]',
-      '\\.twitter-tweet',
-      '\\[class\\*="twitter"\\]'
-    ],
-    pixels: ['twq\\(', 'twitter-pixel'],
-    widgets: ['twitter-timeline', 'twitter-tweet']
-  },
-  linkedin: {
-    scripts: [
-      'platform.linkedin.com',
-      'linkedin.com/analytics',
-      'snap.licdn.com'
-    ],
-    selectors: [
-      'a\\[href\\*="linkedin.com"\\]',
-      '\\.linkedin-share',
-      '\\[class\\*="linkedin"\\]'
-    ],
-    pixels: ['_linkedin_partner_id', 'linkedin-insight'],
-    widgets: ['linkedin-share']
-  },
-  instagram: {
-    scripts: [
-      'instagram.com/embed.js',
-      'platform.instagram.com'
-    ],
-    selectors: [
-      'a\\[href\\*="instagram.com"\\]',
-      'blockquote\\[class\\*="instagram"\\]',
-      '\\[class\\*="instagram"\\]'
-    ],
-    pixels: [],
-    widgets: ['instagram-media']
-  },
-  tiktok: {
-    scripts: [
-      'tiktok.com/embed.js',
-      'analytics.tiktok.com'
-    ],
-    selectors: [
-      'a\\[href\\*="tiktok.com"\\]',
-      'blockquote\\[class\\*="tiktok"\\]'
-    ],
-    pixels: ['ttq\\(', 'tiktok-pixel'],
-    widgets: ['tiktok-embed']
-  },
-  pinterest: {
-    scripts: [
-      'assets.pinterest.com',
-      'pinterest.com/v3/pidgets'
-    ],
-    selectors: [
-      'a\\[href\\*="pinterest.com"\\]',
-      '\\[data-pin-do\\]',
-      '\\.pin-it'
-    ],
-    pixels: [],
-    widgets: ['pinterest-pin']
-  }
-};
-
-function analyzeSocialMedia(htmlContent: string, scripts: string[]): SocialMediaAnalysis {
-  const integrations: SocialMediaIntegration[] = [];
-  const engagementFeatures: string[] = [];
-  const socialLoginOptions: string[] = [];
-
-  // Analyze each platform
-  Object.entries(SOCIAL_MEDIA_PATTERNS).forEach(([platform, patterns]) => {
-    const platformIntegrations = detectPlatformIntegrations(platform, patterns, htmlContent, scripts);
-    integrations.push(...platformIntegrations);
-  });
-
-  // Detect social sharing features
-  const shareButtons = htmlContent.match(/share|social-share|addthis|sharethis/gi);
-  if (shareButtons) {
-    engagementFeatures.push(`Social sharing buttons (${shareButtons.length} found)`);
-  }
-
-  // Detect social login
-  const loginPatterns = htmlContent.match(/facebook.*login|google.*login|twitter.*login|linkedin.*login/gi);
-  if (loginPatterns) {
-    loginPatterns.forEach(pattern => {
-      if (pattern.toLowerCase().includes('facebook')) socialLoginOptions.push('Facebook Login');
-      if (pattern.toLowerCase().includes('google')) socialLoginOptions.push('Google Login');
-      if (pattern.toLowerCase().includes('twitter')) socialLoginOptions.push('Twitter Login');
-      if (pattern.toLowerCase().includes('linkedin')) socialLoginOptions.push('LinkedIn Login');
-    });
-  }
-
-  return {
-    integrations,
-    totalPlatforms: new Set(integrations.map(i => i.platform)).size,
-    engagementFeatures: [...new Set(engagementFeatures)],
-    socialLoginOptions: [...new Set(socialLoginOptions)]
+interface AnalysisResult {
+  url: string;
+  status: 'completed' | 'failed';
+  error?: string;
+  technologies: DetectedTechnology[];
+  metadata: {
+    title?: string;
+    description?: string;
+    responseTime: number;
+    statusCode?: number;
+    headers?: Record<string, string>;
+    ssl?: {
+      issuer?: string;
+      validFrom?: string;
+      validTo?: string;
+    };
+  };
+  aiAnalysis?: {
+    summary: string;
+    additionalTechnologies: DetectedTechnology[];
+    patterns: string[];
+    recommendations: string[];
+    aiGeneratedPatterns: string[];
   };
 }
 
-function detectPlatformIntegrations(platform: string, patterns: any, htmlContent: string, scripts: string[]): SocialMediaIntegration[] {
-  const integrations: SocialMediaIntegration[] = [];
+// Enhanced technology detection patterns with deeper analysis capabilities
+const TECH_PATTERNS = {
+  // Frontend Frameworks with enhanced detection
+  'React': {
+    patterns: [/react/i, /_react/i, /react-dom/i, /ReactDOM/i, /data-reactid/i, /data-reactroot/i],
+    category: 'Frontend Framework',
+    files: ['/static/js/', '/assets/', '/_next/', '/react', 'react.min.js', 'react.js'],
+    headers: ['x-react'],
+    meta: ['generator'],
+    elements: ['<div id="root">', '<div id="react-root">', 'data-reactroot'],
+    cssClasses: ['react-', 'jsx-'],
+    comments: ['react', 'jsx', 'facebook'],
+    inlineScripts: ['React.createElement', 'ReactDOM.render'],
+    cookies: ['react-session'],
+  },
+  'Vue.js': {
+    patterns: [/vue\.js/i, /vue@/i, /__vue/i, /Vue\(/i, /v-if/i, /v-for/i, /v-model/i],
+    category: 'Frontend Framework',
+    files: ['/js/vue', '/dist/vue', 'vue.min.js', 'vue.js'],
+    headers: ['x-vue'],
+    elements: ['<div id="app">', 'v-if', 'v-for', 'v-model', ':class', '@click'],
+    cssClasses: ['v-', 'vue-'],
+    comments: ['vue', 'evan you'],
+    inlineScripts: ['new Vue(', 'Vue.component'],
+  },
+  'Angular': {
+    patterns: [/angular/i, /ng-/i, /@angular/i, /AngularJS/i],
+    category: 'Frontend Framework',
+    files: ['/angular', '/ng-', 'angular.min.js', 'angular.js'],
+    headers: ['x-angular'],
+    elements: ['<app-root>', 'ng-app', 'ng-controller', 'ng-repeat', '[ngFor]', '*ngIf'],
+    cssClasses: ['ng-', 'angular-'],
+    comments: ['angular', 'google'],
+    inlineScripts: ['angular.module', 'ng-app'],
+  },
+  'Next.js': {
+    patterns: [/next\.js/i, /_next/i, /nextjs/i, /__NEXT_DATA__/i],
+    category: 'Frontend Framework',
+    files: ['/_next/static/', '/_next/', '_next'],
+    headers: ['x-nextjs', 'x-powered-by'],
+    elements: ['<script id="__NEXT_DATA__">', '__NEXT_DATA__'],
+    comments: ['next.js', 'vercel'],
+  },
+  'Nuxt.js': {
+    patterns: [/nuxt/i, /_nuxt/i, /__NUXT__/i],
+    category: 'Frontend Framework',
+    files: ['/_nuxt/', '_nuxt'],
+    elements: ['<div id="__nuxt">', '__NUXT__'],
+    comments: ['nuxt', 'nuxtjs'],
+  },
+  
+  // CSS Frameworks with enhanced detection
+  'Bootstrap': {
+    patterns: [/bootstrap/i, /btn-/i, /col-/i, /container-fluid/i],
+    category: 'CSS Framework',
+    files: ['/bootstrap', '/css/bootstrap', 'bootstrap.min.css', 'bootstrap.css'],
+    cssClasses: ['container', 'row', 'col-', 'btn-', 'navbar', 'card', 'form-control'],
+    comments: ['bootstrap', 'twitter bootstrap'],
+  },
+  'Tailwind CSS': {
+    patterns: [/tailwind/i, /bg-\w+/i, /text-\w+/i, /flex/i, /grid/i],
+    category: 'CSS Framework',
+    files: ['/tailwind', 'tailwind.css'],
+    cssClasses: ['bg-', 'text-', 'p-', 'm-', 'w-', 'h-', 'flex', 'grid', 'space-', 'divide-'],
+    comments: ['tailwind', 'tailwindcss'],
+  },
+  'Bulma': {
+    patterns: [/bulma/i, /is-\w+/i, /has-\w+/i],
+    category: 'CSS Framework',
+    files: ['/bulma', 'bulma.css'],
+    cssClasses: ['is-', 'has-', 'column', 'columns', 'button', 'field'],
+    comments: ['bulma'],
+  },
+  'Foundation': {
+    patterns: [/foundation/i, /zurb/i],
+    category: 'CSS Framework',
+    files: ['/foundation', 'foundation.css'],
+    cssClasses: ['grid-x', 'cell', 'callout', 'reveal'],
+    comments: ['foundation', 'zurb'],
+  },
+  
+  // JavaScript Libraries with enhanced detection
+  'jQuery': {
+    patterns: [/jquery/i, /\$\(/i, /jQuery/i],
+    category: 'JavaScript Library',
+    files: ['/jquery', '/js/jquery', 'jquery.min.js', 'jquery.js'],
+    inlineScripts: ['$(document)', 'jQuery(', '$.ajax'],
+    comments: ['jquery', 'john resig'],
+  },
+  'Lodash': {
+    patterns: [/lodash/i, /_\./i],
+    category: 'JavaScript Library',
+    files: ['lodash.min.js', 'lodash.js'],
+    inlineScripts: ['_.map', '_.filter', '_.reduce'],
+    comments: ['lodash'],
+  },
+  'D3.js': {
+    patterns: [/d3\.js/i, /d3\./i],
+    category: 'Data Visualization',
+    files: ['d3.min.js', 'd3.js'],
+    inlineScripts: ['d3.select', 'd3.scale'],
+    comments: ['d3', 'data driven documents'],
+  },
+  
+  // Backend Technologies with enhanced detection
+  'Node.js': {
+    patterns: [/node\.js/i, /nodejs/i],
+    category: 'Backend Runtime',
+    headers: ['x-powered-by'],
+    cookies: ['connect.sid', 'express-session'],
+    comments: ['node.js', 'nodejs'],
+  },
+  'Express': {
+    patterns: [/express/i],
+    category: 'Backend Framework',
+    headers: ['x-powered-by'],
+    cookies: ['connect.sid'],
+    comments: ['express', 'expressjs'],
+  },
+  'Django': {
+    patterns: [/django/i, /csrftoken/i],
+    category: 'Backend Framework',
+    headers: ['x-django'],
+    cookies: ['csrftoken', 'sessionid', 'django_language'],
+    comments: ['django'],
+  },
+  'Laravel': {
+    patterns: [/laravel/i, /laravel_session/i],
+    category: 'Backend Framework',
+    cookies: ['laravel_session', 'XSRF-TOKEN'],
+    comments: ['laravel'],
+  },
+  'ASP.NET': {
+    patterns: [/asp\.net/i, /aspnet/i, /__VIEWSTATE/i],
+    category: 'Backend Framework',
+    headers: ['x-powered-by', 'x-aspnet-version'],
+    elements: ['__VIEWSTATE', '__EVENTVALIDATION', 'aspNetHidden'],
+    cookies: ['ASP.NET_SessionId'],
+    comments: ['asp.net', 'microsoft'],
+  },
+  'PHP': {
+    patterns: [/php/i, /\.php/i],
+    category: 'Backend Language',
+    headers: ['x-powered-by'],
+    cookies: ['PHPSESSID'],
+    comments: ['php'],
+  },
+  'Ruby on Rails': {
+    patterns: [/rails/i, /ruby/i],
+    category: 'Backend Framework',
+    headers: ['x-powered-by'],
+    cookies: ['_session_id'],
+    files: ['/app/controllers/', '/assets/'],
+    comments: ['rails', 'ruby on rails'],
+  },
+  
+  // CMS with enhanced detection
+  'WordPress': {
+    patterns: [/wp-content/i, /wp-includes/i, /wordpress/i, /wp-admin/i],
+    category: 'Content Management System',
+    files: ['/wp-content/', '/wp-includes/', '/wp-admin/'],
+    meta: ['generator'],
+    elements: ['wp-', 'wordpress'],
+    cssClasses: ['wp-', 'wordpress'],
+    comments: ['wordpress', 'wp'],
+    inlineScripts: ['wp-admin', 'wordpress'],
+  },
+  'Drupal': {
+    patterns: [/drupal/i, /sites\/default/i, /sites\/all/i],
+    category: 'Content Management System',
+    files: ['/sites/default/', '/sites/all/'],
+    meta: ['generator'],
+    cssClasses: ['drupal'],
+    comments: ['drupal'],
+  },
+  'Joomla': {
+    patterns: [/joomla/i, /administrator\/index\.php/i],
+    category: 'Content Management System',
+    files: ['/administrator/', '/components/'],
+    meta: ['generator'],
+    comments: ['joomla'],
+  },
+  'Shopify': {
+    patterns: [/shopify/i, /cdn\.shopify/i],
+    category: 'E-commerce Platform',
+    files: ['/cdn.shopify.com/', '/shopify/'],
+    meta: ['generator'],
+    comments: ['shopify'],
+  },
+  
+  // CDN & Services with enhanced detection
+  'Cloudflare': {
+    patterns: [/cloudflare/i],
+    category: 'CDN',
+    headers: ['cf-ray', 'server', 'cf-cache-status'],
+    comments: ['cloudflare'],
+  },
+  'Amazon CloudFront': {
+    patterns: [/cloudfront/i],
+    category: 'CDN',
+    headers: ['x-amz-cf-id', 'x-cache'],
+    files: ['cloudfront.net'],
+    comments: ['cloudfront', 'amazon'],
+  },
+  'Google Cloud CDN': {
+    patterns: [/gstatic/i, /googleapis/i],
+    category: 'CDN',
+    files: ['gstatic.com', 'googleapis.com'],
+    comments: ['google', 'gstatic'],
+  },
+  
+  // Analytics with enhanced detection
+  'Google Analytics': {
+    patterns: [/google-analytics/i, /gtag/i, /ga\(/i, /googletagmanager/i],
+    category: 'Analytics',
+    files: ['google-analytics.com', 'googletagmanager.com'],
+    inlineScripts: ['gtag(', 'ga(', 'GoogleAnalyticsObject'],
+    comments: ['google analytics', 'gtag'],
+  },
+  'Google Tag Manager': {
+    patterns: [/googletagmanager/i, /gtm\.js/i],
+    category: 'Analytics',
+    files: ['googletagmanager.com'],
+    elements: ['<!-- Google Tag Manager -->'],
+    inlineScripts: ['dataLayer.push'],
+    comments: ['google tag manager', 'gtm'],
+  },
+  'Adobe Analytics': {
+    patterns: [/adobe analytics/i, /omniture/i, /s_code/i],
+    category: 'Analytics',
+    inlineScripts: ['s.t()', 's_code'],
+    comments: ['adobe analytics', 'omniture'],
+  },
+  
+  // Databases (from error messages or exposed info)
+  'MongoDB': {
+    patterns: [/mongodb/i, /mongo/i],
+    category: 'Database',
+    comments: ['mongodb', 'mongo'],
+  },
+  'PostgreSQL': {
+    patterns: [/postgresql/i, /postgres/i],
+    category: 'Database',
+    comments: ['postgresql', 'postgres'],
+  },
+  'MySQL': {
+    patterns: [/mysql/i],
+    category: 'Database',
+    comments: ['mysql'],
+  },
+  'Redis': {
+    patterns: [/redis/i],
+    category: 'Database',
+    comments: ['redis'],
+  },
+  'Supabase': {
+    patterns: [/supabase/i, /supabase\.co/i],
+    category: 'Backend Service',
+    files: ['supabase.co'],
+    comments: ['supabase'],
+  },
+  'Firebase': {
+    patterns: [/firebase/i, /firebaseapp/i],
+    category: 'Backend Service',
+    files: ['firebase', 'firebaseapp.com'],
+    inlineScripts: ['firebase.initializeApp'],
+    comments: ['firebase', 'google firebase'],
+  },
+  
+  // Build Tools and Bundlers
+  'Webpack': {
+    patterns: [/webpack/i, /__webpack/i],
+    category: 'Build Tool',
+    files: ['webpack', '__webpack'],
+    inlineScripts: ['__webpack_require__', 'webpackJsonp'],
+    comments: ['webpack'],
+  },
+  'Vite': {
+    patterns: [/vite/i, /@vite/i],
+    category: 'Build Tool',
+    files: ['/@vite/', '/vite/'],
+    comments: ['vite'],
+  },
+  'Parcel': {
+    patterns: [/parcel/i],
+    category: 'Build Tool',
+    comments: ['parcel'],
+  },
+  'Rollup': {
+    patterns: [/rollup/i],
+    category: 'Build Tool',
+    comments: ['rollup'],
+  },
+};
 
-  // Check for tracking pixels
-  patterns.pixels.forEach((pixelPattern: string) => {
-    if (htmlContent.includes(pixelPattern.replace(/\\/g, ''))) {
-      integrations.push({
-        platform,
-        type: 'pixel',
-        confidence: 0.9,
-        evidence: [`Tracking pixel detected: ${pixelPattern}`]
+async function fetchWebsiteData(url: string, searchMode: string) {
+  const startTime = Date.now();
+  
+  try {
+    // Ensure URL has protocol
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'TechStack-Analyzer/1.0 (Website Technology Scanner)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'Connection': 'keep-alive',
+      },
+      redirect: 'follow',
+    });
+
+    const responseTime = Date.now() - startTime;
+    const html = await response.text();
+    const headers: Record<string, string> = {};
+    
+    response.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+
+    return {
+      html,
+      headers,
+      statusCode: response.status,
+      responseTime,
+      finalUrl: response.url,
+    };
+  } catch (error) {
+    throw new Error(`Failed to fetch website: ${error.message}`);
+  }
+}
+
+function detectTechnologies(html: string, headers: Record<string, string>, options: any, customPatterns: string[] = []) {
+  const technologies: DetectedTechnology[] = [];
+  const htmlLower = html.toLowerCase();
+
+  // Detect from HTML content with enhanced methods
+  for (const [techName, techData] of Object.entries(TECH_PATTERNS)) {
+    let confidence = 0;
+    const detectedPatterns: string[] = [];
+    
+    // Basic pattern detection in HTML
+    for (const pattern of techData.patterns) {
+      if (pattern.test(html)) {
+        confidence += 0.3;
+        detectedPatterns.push(`HTML pattern: ${pattern.toString()}`);
+      }
+    }
+    
+    // Enhanced file path detection
+    if (techData.files) {
+      for (const file of techData.files) {
+        if (htmlLower.includes(file.toLowerCase())) {
+          confidence += 0.25;
+          detectedPatterns.push(`File path: ${file}`);
+        }
+      }
+    }
+    
+    // HTTP headers analysis
+    if (techData.headers && options.analyzeHttpHeaders) {
+      for (const header of techData.headers) {
+        const headerValue = headers[header] || headers[header.toLowerCase()];
+        if (headerValue) {
+          confidence += 0.4;
+          detectedPatterns.push(`HTTP header: ${header} = ${headerValue}`);
+          
+          // Extract version from headers if possible
+          const versionMatch = headerValue.match(/(\d+\.\d+(?:\.\d+)?)/);
+          if (versionMatch && !techData.version) {
+            techData.version = versionMatch[1];
+          }
+        }
+      }
+    }
+
+    // Enhanced CSS class detection
+    if (techData.cssClasses && options.analyzeCssClasses) {
+      for (const cssClass of techData.cssClasses) {
+        const classRegex = new RegExp(`class=["'][^"']*${cssClass.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'gi');
+        if (classRegex.test(html)) {
+          confidence += 0.2;
+          detectedPatterns.push(`CSS class: ${cssClass}`);
+        }
+      }
+    }
+
+    // HTML elements and attributes detection
+    if (techData.elements && options.detectCustomElements) {
+      for (const element of techData.elements) {
+        if (htmlLower.includes(element.toLowerCase())) {
+          confidence += 0.3;
+          detectedPatterns.push(`HTML element: ${element}`);
+        }
+      }
+    }
+
+    // Cookie pattern detection
+    if (techData.cookies && options.analyzeCookiePatterns) {
+      const setCookieHeader = headers['set-cookie'] || headers['Set-Cookie'] || '';
+      for (const cookie of techData.cookies) {
+        if (setCookieHeader.includes(cookie)) {
+          confidence += 0.3;
+          detectedPatterns.push(`Cookie: ${cookie}`);
+        }
+      }
+    }
+
+    // HTML comments analysis
+    if (techData.comments && options.analyzeHtmlComments) {
+      for (const comment of techData.comments) {
+        const commentRegex = new RegExp(`<!--[^>]*${comment}[^>]*-->`, 'gi');
+        if (commentRegex.test(html)) {
+          confidence += 0.25;
+          detectedPatterns.push(`HTML comment: ${comment}`);
+        }
+      }
+    }
+
+    // Inline scripts analysis
+    if (techData.inlineScripts && options.analyzeInlineScripts) {
+      for (const script of techData.inlineScripts) {
+        const scriptRegex = new RegExp(script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        if (scriptRegex.test(html)) {
+          confidence += 0.3;
+          detectedPatterns.push(`Inline script: ${script}`);
+        }
+      }
+    }
+    
+    // Meta tags analysis for generators and other indicators
+    if (options.analyzeMetaTags && techData.meta) {
+      const metaRegex = /<meta[^>]*name=['"](generator|application-name)['"]/gi;
+      const metaMatches = html.match(metaRegex);
+      if (metaMatches) {
+        for (const match of metaMatches) {
+          if (match.toLowerCase().includes(techName.toLowerCase())) {
+            confidence += 0.4;
+            detectedPatterns.push(`Meta tag: ${match}`);
+            
+            // Extract version from meta tags
+            const versionMatch = match.match(/(\d+\.\d+(?:\.\d+)?)/);
+            if (versionMatch) {
+              techData.version = versionMatch[1];
+            }
+          }
+        }
+      }
+    }
+    
+    // Add technology if confidence threshold is met
+    if (confidence > 0.2) {
+      technologies.push({
+        name: techName,
+        category: techData.category,
+        version: techData.version,
+        confidence: Math.min(confidence, 1),
+        detectionMethod: confidence > 0.7 ? 'High Confidence Detection' : 'Pattern Matching',
+        patterns: detectedPatterns,
       });
     }
-  });
+  }
 
-  // Check for scripts
-  patterns.scripts.forEach((scriptPattern: string) => {
-    const foundScripts = scripts.filter(script => script.includes(scriptPattern));
-    if (foundScripts.length > 0) {
-      integrations.push({
-        platform,
-        type: 'tracking',
-        confidence: 0.95,
-        evidence: [`Script integration: ${foundScripts.join(', ')}`]
-      });
-    }
-  });
-
-  // Check for widgets and embeds
-  patterns.widgets.forEach((widget: string) => {
-    if (htmlContent.includes(widget)) {
-      integrations.push({
-        platform,
-        type: 'widget',
-        confidence: 0.85,
-        evidence: [`Widget detected: ${widget}`]
-      });
-    }
-  });
-
-  // Check for social links and buttons
-  patterns.selectors.forEach((selector: string) => {
-    const regex = new RegExp(selector.replace(/\\\\/g, '\\'), 'gi');
+  // Check custom patterns
+  for (const pattern of customPatterns) {
     try {
-      const matches = htmlContent.match(regex);
-      if (matches) {
-        integrations.push({
-          platform,
-          type: 'share_button',
-          confidence: 0.7,
-          evidence: [`Social elements found: ${matches.length} matches`]
+      const regex = new RegExp(pattern, 'i');
+      if (regex.test(html)) {
+        technologies.push({
+          name: `Custom Pattern: ${pattern}`,
+          category: 'Custom Detection',
+          confidence: 0.8,
+          detectionMethod: 'Custom Pattern',
+          patterns: [pattern],
         });
       }
     } catch (error) {
-      console.log(`Regex error for ${selector}:`, error);
+      console.log('Invalid custom pattern:', pattern);
     }
-  });
+  }
 
-  return integrations;
+  return technologies;
 }
 
-function detectTechnologies(
-  htmlContent: string, 
-  scripts: string[], 
-  headers: Record<string, string>,
-  deepSearchEnabled: boolean = true
-): DetectedTechnology[] {
-  const technologies: DetectedTechnology[] = [];
+function performDeepAnalysis(html: string, options: any) {
+  const findings: DetectedTechnology[] = [];
+  
+  // Enhanced HTML comments analysis
+  if (options.analyzeHtmlComments) {
+    const commentRegex = /<!--(.*?)-->/gs;
+    const comments = html.match(commentRegex) || [];
+    
+    for (const comment of comments) {
+      const commentText = comment.toLowerCase();
+      
+      // Check for more framework indicators in comments
+      const frameworkIndicators = {
+        'React': ['react', 'jsx', 'facebook'],
+        'Vue.js': ['vue', 'evan you'],
+        'Angular': ['angular', 'google'],
+        'WordPress': ['wordpress', 'wp'],
+        'Drupal': ['drupal'],
+        'Joomla': ['joomla'],
+        'jQuery': ['jquery', 'john resig'],
+        'Bootstrap': ['bootstrap', 'twitter'],
+        'Tailwind CSS': ['tailwind'],
+      };
 
-  Object.entries(ENHANCED_TECHNOLOGY_PATTERNS).forEach(([techName, config]) => {
-    const foundPatterns: string[] = [];
-    let confidence = 0;
-    let detectionMethod = 'Pattern Matching';
-
-    // HTML content detection
-    config.patterns.html.forEach(pattern => {
-      try {
-        const regex = new RegExp(pattern, 'gi');
-        if (regex.test(htmlContent)) {
-          foundPatterns.push(`HTML: ${pattern}`);
-          confidence += 0.3;
-        }
-      } catch (error) {
-        console.log(`HTML regex error for ${pattern}:`, error);
-      }
-    });
-
-    // Script detection
-    config.patterns.scripts.forEach(pattern => {
-      const foundScripts = scripts.filter(script => 
-        script.toLowerCase().includes(pattern.toLowerCase())
-      );
-      if (foundScripts.length > 0) {
-        foundPatterns.push(`Scripts: ${pattern}`);
-        confidence += 0.4;
-        detectionMethod = 'Script Analysis';
-      }
-    });
-
-    // Headers detection
-    if (deepSearchEnabled) {
-      config.patterns.headers.forEach(pattern => {
-        Object.entries(headers).forEach(([key, value]) => {
-          try {
-            const regex = new RegExp(pattern, 'gi');
-            if (regex.test(`${key}: ${value}`)) {
-              foundPatterns.push(`Header: ${key}`);
-              confidence += 0.3;
-              detectionMethod = 'Deep Pattern';
-            }
-          } catch (error) {
-            console.log(`Header regex error for ${pattern}:`, error);
-          }
-        });
-      });
-
-      // Meta tags detection
-      config.patterns.meta.forEach(pattern => {
-        try {
-          const regex = new RegExp(`<meta[^>]*${pattern}[^>]*>`, 'gi');
-          if (regex.test(htmlContent)) {
-            foundPatterns.push(`Meta: ${pattern}`);
-            confidence += 0.25;
-            detectionMethod = 'Deep Pattern';
-          }
-        } catch (error) {
-          console.log(`Meta regex error for ${pattern}:`, error);
-        }
-      });
-
-      // CSS detection
-      config.patterns.css.forEach(pattern => {
-        try {
-          const cssRegex = new RegExp(`class="[^"]*${pattern}[^"]*"`, 'gi');
-          if (cssRegex.test(htmlContent)) {
-            foundPatterns.push(`CSS: ${pattern}`);
-            confidence += 0.2;
-            detectionMethod = 'Deep Pattern';
-          }
-        } catch (error) {
-          console.log(`CSS regex error for ${pattern}:`, error);
-        }
-      });
-
-      // Comments detection
-      config.patterns.comments.forEach(pattern => {
-        try {
-          const commentRegex = new RegExp(`<!--[^>]*${pattern}[^>]*-->`, 'gi');
-          if (commentRegex.test(htmlContent)) {
-            foundPatterns.push(`Comment: ${pattern}`);
-            confidence += 0.15;
-            detectionMethod = 'Deep Pattern';
-          }
-        } catch (error) {
-          console.log(`Comment regex error for ${pattern}:`, error);
-        }
-      });
-
-      // File path detection
-      config.patterns.files.forEach(pattern => {
-        scripts.forEach(script => {
-          if (script.includes(pattern)) {
-            foundPatterns.push(`File: ${pattern}`);
-            confidence += 0.25;
-            detectionMethod = 'Deep Pattern';
-          }
-        });
-      });
-    }
-
-    // Version detection
-    let version;
-    if (config.versionPatterns) {
-      for (const versionPattern of config.versionPatterns) {
-        try {
-          const regex = new RegExp(versionPattern, 'gi');
-          const match = htmlContent.match(regex) || scripts.join(' ').match(regex);
-          if (match && match[1]) {
-            version = match[1];
-            confidence += 0.1;
+      for (const [tech, indicators] of Object.entries(frameworkIndicators)) {
+        for (const indicator of indicators) {
+          if (commentText.includes(indicator)) {
+            findings.push({
+              name: tech,
+              category: 'Frontend Framework',
+              confidence: 0.6,
+              detectionMethod: 'HTML Comment Analysis',
+              patterns: [`Comment contains: ${indicator}`],
+            });
             break;
           }
-        } catch (error) {
-          console.log(`Version regex error for ${versionPattern}:`, error);
         }
       }
     }
-
-    if (foundPatterns.length > 0) {
-      technologies.push({
-        name: techName,
-        category: config.category,
-        version,
-        confidence: Math.min(confidence, 1.0),
-        detectionMethod,
-        patterns: foundPatterns
+  }
+  
+  // Enhanced custom elements detection
+  if (options.detectCustomElements) {
+    // Look for custom HTML elements
+    const customElementRegex = /<([a-z]+-[a-z-]+)/gi;
+    const customElements = html.match(customElementRegex) || [];
+    
+    if (customElements.length > 0) {
+      findings.push({
+        name: 'Web Components',
+        category: 'Frontend Technology',
+        confidence: 0.5,
+        detectionMethod: 'Custom Element Detection',
+        patterns: customElements.slice(0, 3),
       });
     }
-  });
 
-  return technologies.sort((a, b) => b.confidence - a.confidence);
+    // Framework-specific elements
+    const frameworkElements = {
+      'Angular': ['<app-root>', 'ng-app', '[ngFor]', '*ngIf', '(click)', '[class]'],
+      'Vue.js': ['v-if', 'v-for', 'v-model', ':class', '@click'],
+      'React': ['data-reactroot', 'data-reactid'],
+    };
+
+    for (const [framework, elements] of Object.entries(frameworkElements)) {
+      for (const element of elements) {
+        if (html.includes(element)) {
+          findings.push({
+            name: framework,
+            category: 'Frontend Framework',
+            confidence: 0.8,
+            detectionMethod: 'Framework Element Detection',
+            patterns: [element],
+          });
+          break;
+        }
+      }
+    }
+  }
+  
+  // Enhanced file path analysis
+  if (options.analyzeFilePaths) {
+    // Extract all script and link sources
+    const scriptRegex = /<script[^>]*src=['"](.*?)['"]/gi;
+    const linkRegex = /<link[^>]*href=['"](.*?)['"]/gi;
+    
+    const scripts = Array.from(html.matchAll(scriptRegex)).map(match => match[1]);
+    const links = Array.from(html.matchAll(linkRegex)).map(match => match[1]);
+    
+    const allPaths = [...scripts, ...links];
+    
+    // Analyze paths for technology indicators
+    const pathIndicators = {
+      'Webpack': ['webpack', '__webpack', 'webpackJsonp'],
+      'Vite': ['/@vite/', '/vite/', '@vite'],
+      'Parcel': ['parcel'],
+      'WordPress': ['/wp-content/themes/', '/wp-content/plugins/', '/wp-includes/'],
+      'Ruby on Rails': ['/app/controllers/', '/assets/'],
+      'Django': ['/static/admin/', '/django/'],
+      'Laravel': ['/vendor/laravel/'],
+      'Next.js': ['/_next/static/', '/_next/'],
+      'Nuxt.js': ['/_nuxt/'],
+      'Shopify': ['/cdn.shopify.com/', '/assets/'],
+    };
+
+    for (const [tech, indicators] of Object.entries(pathIndicators)) {
+      for (const path of allPaths) {
+        for (const indicator of indicators) {
+          if (path.includes(indicator)) {
+            findings.push({
+              name: tech,
+              category: tech.includes('Webpack') || tech.includes('Vite') || tech.includes('Parcel') 
+                       ? 'Build Tool' : 
+                       tech.includes('WordPress') || tech.includes('Shopify') 
+                       ? 'Content Management System' : 'Backend Framework',
+              confidence: 0.8,
+              detectionMethod: 'File Path Analysis',
+              patterns: [path],
+            });
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  // Enhanced inline script analysis
+  if (options.analyzeInlineScripts) {
+    const scriptBlocks = html.match(/<script[^>]*>(.*?)<\/script>/gis) || [];
+    
+    for (const script of scriptBlocks) {
+      const scriptContent = script.toLowerCase();
+      
+      const scriptIndicators = {
+        'Google Analytics': ['gtag(', 'ga(', 'googleanalyticsobject'],
+        'Google Tag Manager': ['datalayer.push', 'gtm.js'],
+        'jQuery': ['$(document)', 'jquery(', '$.ajax'],
+        'React': ['react.createelement', 'reactdom.render'],
+        'Vue.js': ['new vue(', 'vue.component'],
+        'Angular': ['angular.module', 'ng-app'],
+        'D3.js': ['d3.select', 'd3.scale'],
+        'Firebase': ['firebase.initializeapp'],
+      };
+
+      for (const [tech, indicators] of Object.entries(scriptIndicators)) {
+        for (const indicator of indicators) {
+          if (scriptContent.includes(indicator)) {
+            findings.push({
+              name: tech,
+              category: tech.includes('Analytics') || tech.includes('Tag Manager') 
+                       ? 'Analytics' : 
+                       tech.includes('Firebase') 
+                       ? 'Backend Service' : 'JavaScript Library',
+              confidence: 0.7,
+              detectionMethod: 'Inline Script Analysis',
+              patterns: [indicator],
+            });
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  return findings;
 }
 
-async function fetchWebsiteData(url: string) {
+async function generateAIPatterns(html: string, url: string, existingTechnologies: DetectedTechnology[]) {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  if (!openAIApiKey) {
+    console.log('OpenAI API key not found, skipping AI pattern generation');
+    return [];
+  }
+
   try {
-    console.log(`Fetching data for: ${url}`);
+    const truncatedHtml = html.slice(0, 6000);
+    const existingTechNames = existingTechnologies.map(t => t.name).join(', ');
     
-    const response = await fetch(url, {
+    const prompt = `Analyze this website HTML and generate specific search patterns that could help detect additional technologies:
+
+URL: ${url}
+HTML Sample: ${truncatedHtml}
+Already detected: ${existingTechNames}
+
+Based on the HTML structure, file references, CSS classes, and JavaScript patterns, suggest 10-15 specific search patterns (regex-friendly strings) that could help identify additional technologies, frameworks, or tools not yet detected.
+
+Focus on:
+1. Unique CSS class prefixes or naming conventions
+2. Specific JavaScript function names or variables
+3. Unique HTML attributes or data attributes
+4. File path patterns
+5. Meta tag values
+6. Comments patterns
+7. Inline script patterns
+
+Return only a JSON array of strings (the patterns), nothing else.`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      }
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a web technology expert. Generate specific search patterns to detect web technologies. Return only valid JSON arrays.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 500,
+      }),
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
 
-    const htmlContent = await response.text();
-    const headers = Object.fromEntries(response.headers.entries());
+    const data = await response.json();
+    const content = data.choices[0].message.content;
     
-    // Extract scripts from HTML
-    const scriptMatches = htmlContent.match(/<script[^>]*src="([^"]*)"[^>]*>/gi) || [];
-    const scripts = scriptMatches.map(match => {
-      const srcMatch = match.match(/src="([^"]*)"/);
-      return srcMatch ? srcMatch[1] : '';
-    }).filter(Boolean);
-
-    // Extract inline scripts
-    const inlineScriptMatches = htmlContent.match(/<script[^>]*>(.*?)<\/script>/gis) || [];
-    const inlineScripts = inlineScriptMatches.map(match => 
-      match.replace(/<\/?script[^>]*>/gi, '')
-    );
-
-    // Extract metadata
-    const titleMatch = htmlContent.match(/<title[^>]*>(.*?)<\/title>/i);
-    const descriptionMatch = htmlContent.match(/<meta[^>]*name="description"[^>]*content="([^"]*)"[^>]*>/i);
-
-    return {
-      htmlContent,
-      scripts: scripts.concat(inlineScripts),
-      headers,
-      metadata: {
-        title: titleMatch ? titleMatch[1].trim() : undefined,
-        description: descriptionMatch ? descriptionMatch[1].trim() : undefined
-      }
-    };
+    try {
+      const patterns = JSON.parse(content);
+      return Array.isArray(patterns) ? patterns : [];
+    } catch {
+      // Try to extract patterns from non-JSON response
+      const patternMatches = content.match(/"([^"]+)"/g);
+      return patternMatches ? patternMatches.map((p: string) => p.replace(/"/g, '')) : [];
+    }
   } catch (error) {
-    console.error(`Error fetching ${url}:`, error);
-    throw error;
+    console.error('AI pattern generation error:', error);
+    return [];
+  }
+}
+
+async function performAIAnalysis(html: string, url: string, technologies: DetectedTechnology[]) {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  if (!openAIApiKey) {
+    console.log('OpenAI API key not found, skipping AI analysis');
+    return null;
+  }
+
+  try {
+    // Truncate HTML for AI analysis (to stay within token limits)
+    const truncatedHtml = html.slice(0, 8000);
+    
+    const prompt = `Analyze this website HTML and provide comprehensive insights about the technologies used:
+
+URL: ${url}
+HTML Sample: ${truncatedHtml}
+
+Currently detected technologies: ${technologies.map(t => t.name).join(', ')}
+
+Please provide a detailed analysis including:
+1. A comprehensive summary of the website's tech stack and architecture
+2. Any additional technologies you can identify that weren't detected (with confidence scores 0-1)
+3. Architecture patterns and design approaches you observe
+4. Performance and security recommendations
+5. Modern web development practices being used or missing
+
+Respond in JSON format with: 
+{
+  "summary": "detailed summary",
+  "additionalTechnologies": [{"name": "tech", "category": "category", "confidence": 0.8}],
+  "patterns": ["pattern1", "pattern2"],
+  "recommendations": ["rec1", "rec2"]
+}`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a senior web technology expert and architect. Analyze websites comprehensively and provide detailed technical insights in valid JSON format.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 1500,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    
+    try {
+      return JSON.parse(content);
+    } catch {
+      // If JSON parsing fails, return a basic structure
+      return {
+        summary: content,
+        additionalTechnologies: [],
+        patterns: [],
+        recommendations: [],
+      };
+    }
+  } catch (error) {
+    console.error('AI analysis error:', error);
+    return null;
   }
 }
 
@@ -758,89 +877,193 @@ serve(async (req) => {
   }
 
   try {
-    const { urls, deepSearchEnabled, aiAnalysisEnabled } = await req.json();
-    console.log('Analyzing URLs:', urls);
-    console.log('Deep search enabled:', deepSearchEnabled);
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
 
-    const results = [];
+    if (req.method === 'POST') {
+      const requestData: AnalysisRequest = await req.json();
+      const { 
+        urls, 
+        deepSearchEnabled, 
+        aiAnalysisEnabled, 
+        searchMode = 'full',
+        deepSearchOptions = {
+          analyzeHtmlComments: true,
+          analyzeMetaTags: true,
+          detectCustomElements: true,
+          analyzeFilePaths: true,
+          aiPatternDetection: true,
+          analyzeCssClasses: true,
+          analyzeInlineScripts: true,
+          analyzeHttpHeaders: true,
+          analyzeCookiePatterns: true,
+          detectBehavioralPatterns: true,
+        },
+        customPatterns = []
+      } = requestData;
 
-    for (const url of urls) {
-      const startTime = Date.now();
+      console.log('Starting enhanced deep analysis for URLs:', urls);
+      console.log('Search mode:', searchMode);
+      console.log('Deep search enabled:', deepSearchEnabled);
+      console.log('AI analysis enabled:', aiAnalysisEnabled);
+      console.log('Deep search options:', deepSearchOptions);
+
+      const jobId = crypto.randomUUID();
+      const results: AnalysisResult[] = [];
       
-      try {
-        const websiteData = await fetchWebsiteData(url);
-        const responseTime = Date.now() - startTime;
+      for (let i = 0; i < urls.length; i++) {
+        const url = urls[i];
+        console.log(`Processing URL ${i + 1}/${urls.length}: ${url}`);
+        
+        try {
+          // Fetch website data
+          const websiteData = await fetchWebsiteData(url, searchMode);
+          
+          // Detect technologies with enhanced patterns
+          let technologies = detectTechnologies(
+            websiteData.html, 
+            websiteData.headers, 
+            deepSearchOptions,
+            customPatterns
+          );
+          
+          // Perform deep analysis if enabled
+          if (deepSearchEnabled) {
+            const deepFindings = performDeepAnalysis(websiteData.html, deepSearchOptions);
+            technologies = [...technologies, ...deepFindings];
+          }
 
-        // Detect technologies with enhanced patterns and deep search
-        const technologies = detectTechnologies(
-          websiteData.htmlContent,
-          websiteData.scripts,
-          websiteData.headers,
-          deepSearchEnabled
-        );
+          // Generate AI patterns if enabled
+          let aiGeneratedPatterns: string[] = [];
+          if (deepSearchOptions.aiPatternDetection && aiAnalysisEnabled) {
+            console.log('Generating AI patterns for:', url);
+            aiGeneratedPatterns = await generateAIPatterns(websiteData.html, url, technologies);
+            
+            // Use AI-generated patterns for additional detection
+            for (const pattern of aiGeneratedPatterns) {
+              try {
+                const regex = new RegExp(pattern, 'i');
+                if (regex.test(websiteData.html)) {
+                  technologies.push({
+                    name: `AI-Detected: ${pattern}`,
+                    category: 'AI Pattern Detection',
+                    confidence: 0.7,
+                    detectionMethod: 'AI-Generated Pattern',
+                    patterns: [pattern],
+                  });
+                }
+              } catch (error) {
+                console.log('Invalid regex pattern generated:', pattern);
+              }
+            }
+          }
+          
+          // Remove duplicates and sort by confidence
+          const uniqueTechs = technologies.reduce((acc, tech) => {
+            const existing = acc.find(t => t.name === tech.name);
+            if (!existing || existing.confidence < tech.confidence) {
+              acc = acc.filter(t => t.name !== tech.name);
+              acc.push(tech);
+            }
+            return acc;
+          }, [] as DetectedTechnology[]);
+          
+          uniqueTechs.sort((a, b) => b.confidence - a.confidence);
 
-        // Analyze social media integrations
-        const socialMediaAnalysis = analyzeSocialMedia(
-          websiteData.htmlContent,
-          websiteData.scripts
-        );
+          // Extract metadata
+          const titleMatch = websiteData.html.match(/<title[^>]*>([^<]+)<\/title>/i);
+          const descMatch = websiteData.html.match(/<meta[^>]*name=['"](description|Description)['"]*[^>]*content=['"](.*?)['"]/i);
+          
+          const result: AnalysisResult = {
+            url: websiteData.finalUrl || url,
+            status: 'completed',
+            technologies: uniqueTechs,
+            metadata: {
+              title: titleMatch ? titleMatch[1].trim() : undefined,
+              description: descMatch ? descMatch[2].trim() : undefined,
+              responseTime: websiteData.responseTime,
+              statusCode: websiteData.statusCode,
+              headers: websiteData.headers,
+            }
+          };
 
-        console.log(`Found ${technologies.length} technologies and ${socialMediaAnalysis.integrations.length} social media integrations for ${url}`);
+          // Perform AI analysis if enabled
+          if (aiAnalysisEnabled) {
+            console.log('Performing enhanced AI analysis for:', url);
+            const aiResult = await performAIAnalysis(websiteData.html, url, uniqueTechs);
+            if (aiResult) {
+              result.aiAnalysis = {
+                ...aiResult,
+                aiGeneratedPatterns: aiGeneratedPatterns,
+              };
+            }
+          }
 
-        results.push({
-          url,
-          status: 'completed',
-          technologies,
-          socialMediaAnalysis,
-          metadata: {
-            title: websiteData.metadata.title,
-            description: websiteData.metadata.description,
-            responseTime
-          },
-          htmlContent: websiteData.htmlContent.substring(0, 10000), // Limit size
-          scripts: websiteData.scripts.slice(0, 20), // Limit array size
-          links: [] // Could extract links if needed
-        });
+          results.push(result);
 
-      } catch (error) {
-        console.error(`Error analyzing ${url}:`, error);
-        results.push({
-          url,
-          status: 'failed',
-          error: error.message,
-          technologies: [],
-          socialMediaAnalysis: {
-            integrations: [],
-            totalPlatforms: 0,
-            engagementFeatures: [],
-            socialLoginOptions: []
-          },
-          metadata: { responseTime: Date.now() - startTime }
-        });
+          // Store in database
+          await supabase.from('website_scans').insert({
+            url: result.url,
+            status: 'completed',
+            technologies: result.technologies,
+            response_time: result.metadata.responseTime,
+            status_code: result.metadata.statusCode,
+          });
+
+        } catch (error) {
+          console.error(`Error processing URL ${url}:`, error);
+          
+          const failedResult: AnalysisResult = {
+            url,
+            status: 'failed',
+            error: error.message,
+            technologies: [],
+            metadata: {
+              responseTime: 0
+            }
+          };
+          
+          results.push(failedResult);
+
+          await supabase.from('website_scans').insert({
+            url,
+            status: 'failed',
+            error_message: error.message,
+            response_time: 0,
+          });
+        }
       }
+
+      return new Response(
+        JSON.stringify({
+          jobId,
+          totalUrls: urls.length,
+          status: 'completed',
+          processedUrls: urls.length,
+          results
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
     }
 
-    return new Response(
-      JSON.stringify({
-        jobId: Date.now(),
-        status: 'completed',
-        totalUrls: urls.length,
-        processedUrls: results.length,
-        results
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+    return new Response('Method not allowed', { 
+      headers: corsHeaders, 
+      status: 405 
+    });
 
   } catch (error) {
     console.error('Error in analyze function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }
-});
+})

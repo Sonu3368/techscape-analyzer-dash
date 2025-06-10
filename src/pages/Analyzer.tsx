@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -213,10 +214,14 @@ const Analyzer = () => {
 
         {/* Main Dashboard Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 max-w-lg mb-6">
+          <TabsList className="grid w-full grid-cols-3 max-w-lg mb-6">
             <TabsTrigger value="analyzer" className="flex items-center gap-2">
               <Search className="h-4 w-4" />
               Tech Analyzer
+            </TabsTrigger>
+            <TabsTrigger value="ecosystem" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Tech Ecosystem
             </TabsTrigger>
             <TabsTrigger value="corporate" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
@@ -241,6 +246,11 @@ const Analyzer = () => {
               <ResultsPanel job={currentJob} />
             </div>
             <TechStackVisualization results={currentJob.results} />
+          </TabsContent>
+
+          {/* Technology Ecosystem Tab */}
+          <TabsContent value="ecosystem" className="space-y-6">
+            <TechEcosystemDashboard results={currentJob.results} />
           </TabsContent>
 
           {/* Corporate Due Diligence Tab */}
