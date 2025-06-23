@@ -4,9 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Globe, LogOut, User, Search, BarChart3, Building2 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { UserMenu } from '@/components/UserMenu';
+import { Globe, Search, BarChart3, Building2 } from 'lucide-react';
 import { InputPanel } from '@/components/InputPanel';
 import { ResultsPanel } from '@/components/ResultsPanel';
 import { TechStackVisualization } from '@/components/TechStackVisualization';
@@ -52,7 +50,6 @@ interface AnalysisJob {
 
 const Analyzer = () => {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('analyzer');
   
   // State for analysis functionality
@@ -216,7 +213,13 @@ const Analyzer = () => {
           </div>
           
           <div className="flex items-center gap-4">
-            {user && <UserMenu />}
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/')}
+              className="text-gray-700 hover:text-blue-600"
+            >
+              Home
+            </Button>
           </div>
         </div>
       </header>
@@ -225,7 +228,7 @@ const Analyzer = () => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {user?.user_metadata?.first_name || 'User'}!
+            Website Technology Analyzer
           </h1>
           <p className="text-gray-600">
             Analyze real technology stacks from live websites, explore corporate intelligence, and gain competitive insights.
@@ -256,8 +259,6 @@ const Analyzer = () => {
                 onAnalyze={handleAnalyze}
                 isLoading={isProcessing}
                 onFileUpload={handleFileUpload}
-                onDemoAnalyze={handleDemoAnalyze}
-                demoLimit={false}
               />
               <ResultsPanel job={currentJob} />
             </div>
