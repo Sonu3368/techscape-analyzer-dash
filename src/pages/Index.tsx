@@ -1,16 +1,27 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import { Globe, Search, BarChart, Building, TrendingUp, FileText, CreditCard } from "lucide-react";
+import { UserMenu } from "@/components/UserMenu";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const handleGetStarted = () => {
-    navigate('/analyzer');
+    if (user) {
+      navigate('/analyzer');
+    } else {
+      navigate('/auth/signup');
+    }
   };
 
   const handleGSTDashboard = () => {
-    navigate('/gst-dashboard');
+    if (user) {
+      navigate('/gst-dashboard');
+    } else {
+      navigate('/auth/login');
+    }
   };
 
   return (
@@ -24,20 +35,41 @@ const Index = () => {
               <span className="ml-2 text-xl font-bold text-gray-900">TechAnalyzer Pro</span>
             </div>
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="ghost" 
-                onClick={() => navigate('/analyzer')}
-                className="text-gray-700 hover:text-blue-600"
-              >
-                Tech Analyzer
-              </Button>
-              <Button 
-                variant="ghost" 
-                onClick={handleGSTDashboard}
-                className="text-gray-700 hover:text-blue-600"
-              >
-                GST Dashboard
-              </Button>
+              {user ? (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => navigate('/analyzer')}
+                    className="text-gray-700 hover:text-blue-600"
+                  >
+                    Tech Analyzer
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleGSTDashboard}
+                    className="text-gray-700 hover:text-blue-600"
+                  >
+                    GST Dashboard
+                  </Button>
+                  <UserMenu />
+                </>
+              ) : (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => navigate('/auth/login')}
+                    className="text-gray-700 hover:text-blue-600"
+                  >
+                    Sign In
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/auth/signup')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Get Started
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
