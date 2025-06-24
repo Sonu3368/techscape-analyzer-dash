@@ -750,10 +750,11 @@ function performDeepAnalysis(html: string, options: any) {
 }
 
 async function generateAIPatterns(html: string, url: string, existingTechnologies: DetectedTechnology[]) {
+  const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
   const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
   
-  if (!openAIApiKey) {
-    console.log('OpenAI API key not found, skipping AI pattern generation');
+  if (!geminiApiKey && !openAIApiKey) {
+    console.log('No AI API keys found, skipping AI pattern generation');
     return [];
   }
 
@@ -780,44 +781,86 @@ Focus on:
 
 Return only a JSON array of strings (the patterns), nothing else.`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a web technology expert. Generate specific search patterns to detect web technologies. Return only valid JSON arrays.'
+    // Try Gemini first if available
+    if (geminiApiKey) {
+      console.log('Using Gemini for AI pattern generation');
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 500,
           },
-          {
-            role: 'user',
-            content: prompt
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (content) {
+          try {
+            const patterns = JSON.parse(content);
+            return Array.isArray(patterns) ? patterns : [];
+          } catch {
+            // Try to extract patterns from non-JSON response
+            const patternMatches = content.match(/"([^"]+)"/g);
+            return patternMatches ? patternMatches.map((p: string) => p.replace(/"/g, '')) : [];
           }
-        ],
-        temperature: 0.3,
-        max_tokens: 500,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+        }
+      }
     }
 
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    
-    try {
-      const patterns = JSON.parse(content);
-      return Array.isArray(patterns) ? patterns : [];
-    } catch {
-      // Try to extract patterns from non-JSON response
-      const patternMatches = content.match(/"([^"]+)"/g);
-      return patternMatches ? patternMatches.map((p: string) => p.replace(/"/g, '')) : [];
+    // Fallback to OpenAI if Gemini fails or is not available
+    if (openAIApiKey) {
+      console.log('Using OpenAI for AI pattern generation');
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a web technology expert. Generate specific search patterns to detect web technologies. Return only valid JSON arrays.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.3,
+          max_tokens: 500,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+        
+        try {
+          const patterns = JSON.parse(content);
+          return Array.isArray(patterns) ? patterns : [];
+        } catch {
+          // Try to extract patterns from non-JSON response
+          const patternMatches = content.match(/"([^"]+)"/g);
+          return patternMatches ? patternMatches.map((p: string) => p.replace(/"/g, '')) : [];
+        }
+      }
     }
+
+    return [];
   } catch (error) {
     console.error('AI pattern generation error:', error);
     return [];
@@ -825,10 +868,11 @@ Return only a JSON array of strings (the patterns), nothing else.`;
 }
 
 async function performAIAnalysis(html: string, url: string, technologies: DetectedTechnology[]) {
+  const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
   const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
   
-  if (!openAIApiKey) {
-    console.log('OpenAI API key not found, skipping AI analysis');
+  if (!geminiApiKey && !openAIApiKey) {
+    console.log('No AI API keys found, skipping AI analysis');
     return null;
   }
 
@@ -858,47 +902,92 @@ Respond in JSON format with:
   "recommendations": ["rec1", "rec2"]
 }`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a senior web technology expert and architect. Analyze websites comprehensively and provide detailed technical insights in valid JSON format.'
+    // Try Gemini first if available
+    if (geminiApiKey) {
+      console.log('Using Gemini for AI analysis');
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 1500,
           },
-          {
-            role: 'user',
-            content: prompt
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (content) {
+          try {
+            return JSON.parse(content);
+          } catch {
+            // If JSON parsing fails, return a basic structure
+            return {
+              summary: content,
+              additionalTechnologies: [],
+              patterns: [],
+              recommendations: [],
+            };
           }
-        ],
-        temperature: 0.3,
-        max_tokens: 1500,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+        }
+      }
     }
 
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    
-    try {
-      return JSON.parse(content);
-    } catch {
-      // If JSON parsing fails, return a basic structure
-      return {
-        summary: content,
-        additionalTechnologies: [],
-        patterns: [],
-        recommendations: [],
-      };
+    // Fallback to OpenAI if Gemini fails or is not available
+    if (openAIApiKey) {
+      console.log('Using OpenAI for AI analysis');
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a senior web technology expert and architect. Analyze websites comprehensively and provide detailed technical insights in valid JSON format.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.3,
+          max_tokens: 1500,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+        
+        try {
+          return JSON.parse(content);
+        } catch {
+          // If JSON parsing fails, return a basic structure
+          return {
+            summary: content,
+            additionalTechnologies: [],
+            patterns: [],
+            recommendations: [],
+          };
+        }
+      }
     }
+
+    return null;
   } catch (error) {
     console.error('AI analysis error:', error);
     return null;
@@ -906,10 +995,11 @@ Respond in JSON format with:
 }
 
 async function performComprehensivePerformanceAnalysis(html: string, url: string, headers: Record<string, string>, options: any) {
+  const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
   const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
   
-  if (!openAIApiKey) {
-    console.log('OpenAI API key not found, skipping performance analysis');
+  if (!geminiApiKey && !openAIApiKey) {
+    console.log('No AI API keys found, skipping performance analysis');
     return null;
   }
 
@@ -1000,42 +1090,82 @@ Respond in JSON format with this structure:
   }
 }`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a Senior Full-Stack Performance Engineer. Provide comprehensive website performance analysis in valid JSON format with detailed metrics, scores, and actionable recommendations.'
+    // Try Gemini first if available (using Gemini Pro for more complex analysis)
+    if (geminiApiKey) {
+      console.log('Using Gemini for performance analysis');
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 4000,
           },
-          {
-            role: 'user',
-            content: prompt
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (content) {
+          try {
+            return JSON.parse(content);
+          } catch {
+            console.error('Failed to parse Gemini performance analysis JSON');
+            return null;
           }
-        ],
-        temperature: 0.3,
-        max_tokens: 4000,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+        }
+      }
     }
 
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    
-    try {
-      return JSON.parse(content);
-    } catch {
-      console.error('Failed to parse performance analysis JSON');
-      return null;
+    // Fallback to OpenAI if Gemini fails or is not available
+    if (openAIApiKey) {
+      console.log('Using OpenAI for performance analysis');
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a Senior Full-Stack Performance Engineer. Provide comprehensive website performance analysis in valid JSON format with detailed metrics, scores, and actionable recommendations.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.3,
+          max_tokens: 4000,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+        
+        try {
+          return JSON.parse(content);
+        } catch {
+          console.error('Failed to parse OpenAI performance analysis JSON');
+          return null;
+        }
+      }
     }
+
+    return null;
   } catch (error) {
     console.error('Performance analysis error:', error);
     return null;
@@ -1086,6 +1216,7 @@ serve(async (req) => {
       } = requestData;
 
       console.log('Starting comprehensive analysis for URLs:', urls);
+      console.log('AI Analysis enabled with Gemini + OpenAI support:', aiAnalysisEnabled);
       console.log('Performance analysis enabled:', performanceAnalysisEnabled);
 
       const jobId = crypto.randomUUID();
@@ -1142,9 +1273,9 @@ serve(async (req) => {
             }
           };
 
-          // Perform AI analysis if enabled
+          // Perform AI analysis if enabled (now with Gemini + OpenAI support)
           if (aiAnalysisEnabled) {
-            console.log('Performing AI analysis for:', url);
+            console.log('Performing AI analysis with Gemini/OpenAI for:', url);
             const aiResult = await performAIAnalysis(websiteData.html, url, uniqueTechs);
             if (aiResult) {
               result.aiAnalysis = aiResult;
