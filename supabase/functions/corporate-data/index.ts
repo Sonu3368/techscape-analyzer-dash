@@ -32,49 +32,130 @@ serve(async (req) => {
 
     console.log(`Searching for corporate data: ${searchQuery}`)
 
-    // Use filters in the API call to improve search results
     const cleanQuery = searchQuery.trim().toUpperCase()
-    let searchUrl = `https://api.data.gov.in/resource/4dbe5667-7b6b-41d7-82af-211562424d9a?api-key=${apiKey}&format=json&limit=1000`
     
-    // If it looks like a CIN, add CIN filter
+    // Try multiple search strategies
+    let searchResults = null
+    let totalRecords = 0
+    
+    // Strategy 1: Try exact CIN match first if it looks like a CIN
     if (cleanQuery.match(/^[A-Z]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/)) {
-      searchUrl += `&filters[CIN]=${encodeURIComponent(cleanQuery)}`
-    } else {
-      // For company names, add a filter (though API might not support exact matching)
-      searchUrl += `&filters[CompanyName]=${encodeURIComponent(cleanQuery)}`
+      console.log('Searching by CIN pattern')
+      let searchUrl = `https://api.data.gov.in/resource/4dbe5667-7b6b-41d7-82af-211562424d9a?api-key=${apiKey}&format=json&limit=1000&filters[CIN]=${encodeURIComponent(cleanQuery)}`
+      
+      console.log(`Making CIN request to: ${searchUrl}`)
+      const response = await fetch(searchUrl)
+      
+      if (response.ok) {
+        const data = await response.json()
+        searchResults = data
+        totalRecords = data.total || data.records?.length || 0
+        console.log(`CIN search returned ${totalRecords} records`)
+      }
     }
     
-    console.log(`Making request to: ${searchUrl}`)
+    // Strategy 2: If no results, try company name search
+    if (!searchResults || totalRecords === 0) {
+      console.log('Trying company name search')
+      let searchUrl = `https://api.data.gov.in/resource/4dbe5667-7b6b-41d7-82af-211562424d9a?api-key=${apiKey}&format=json&limit=1000`
+      
+      console.log(`Making company name request to: ${searchUrl}`)
+      const response = await fetch(searchUrl)
+      
+      if (response.ok) {
+        const data = await response.json()
+        searchResults = data
+        totalRecords = data.total || data.records?.length || 0
+        console.log(`Company name search returned ${totalRecords} total records`)
+        
+        // Filter results manually if we got data
+        if (data.records && data.records.length > 0) {
+          const filteredRecords = data.records.filter(record => {
+            const companyName = (record.CompanyName || '').toUpperCase()
+            const cin = (record.CIN || '').toUpperCase()
+            
+            return companyName.includes(cleanQuery) || 
+                   cin.includes(cleanQuery) || 
+                   cleanQuery.includes(companyName.substring(0, Math.min(companyName.length, 10)))
+          })
+          
+          console.log(`Filtered to ${filteredRecords.length} matching records`)
+          searchResults.records = filteredRecords
+          totalRecords = filteredRecords.length
+        }
+      }
+    }
     
-    const response = await fetch(searchUrl)
-    
-    if (!response.ok) {
-      console.error(`API request failed with status: ${response.status}`)
-      const errorText = await response.text()
-      console.error(`API error response: ${errorText}`)
-      throw new Error(`API request failed: ${response.status}`)
+    // Strategy 3: If still no results, try broader search without filters
+    if (!searchResults || totalRecords === 0) {
+      console.log('Trying broader search without filters')
+      let searchUrl = `https://api.data.gov.in/resource/4dbe5667-7b6b-41d7-82af-211562424d9a?api-key=${apiKey}&format=json&limit=100`
+      
+      console.log(`Making broader request to: ${searchUrl}`)
+      const response = await fetch(searchUrl)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log(`Broader search returned ${data.total || data.records?.length || 0} records`)
+        
+        if (data.records && data.records.length > 0) {
+          // Show first few records as examples
+          console.log('Sample records from API:')
+          data.records.slice(0, 3).forEach((record, index) => {
+            console.log(`Record ${index + 1}: ${record.CompanyName} (${record.CIN})`)
+          })
+          
+          // Try fuzzy matching
+          const fuzzyMatches = data.records.filter(record => {
+            const companyName = (record.CompanyName || '').toUpperCase()
+            const cin = (record.CIN || '').toUpperCase()
+            const query = cleanQuery
+            
+            // More lenient matching
+            return companyName.includes(query.substring(0, Math.min(query.length, 8))) ||
+                   cin.includes(query.substring(0, Math.min(query.length, 8))) ||
+                   query.includes(companyName.substring(0, Math.min(companyName.length, 8)))
+          })
+          
+          if (fuzzyMatches.length > 0) {
+            console.log(`Found ${fuzzyMatches.length} fuzzy matches`)
+            searchResults = { ...data, records: fuzzyMatches }
+            totalRecords = fuzzyMatches.length
+          } else {
+            searchResults = data
+            totalRecords = data.records.length
+          }
+        }
+      }
     }
 
-    const data = await response.json()
-    console.log('API response received, total records:', data.total || data.records?.length || 0)
+    if (!searchResults) {
+      console.log('API request failed')
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch data from API' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('Final search results:', totalRecords, 'records')
 
     let companyData = null
     
-    if (data.records && data.records.length > 0) {
+    if (searchResults.records && searchResults.records.length > 0) {
       // Enhanced search logic with better matching
-      const match = data.records.find(record => {
+      const match = searchResults.records.find(record => {
         const companyName = (record.CompanyName || '').toUpperCase()
         const cin = (record.CIN || '').toUpperCase()
         const query = cleanQuery
         
-        // Exact CIN match
-        if (cin === query) return true
+        // Exact matches first
+        if (cin === query || companyName === query) return true
         
-        // Exact company name match
-        if (companyName === query) return true
+        // Partial matches
+        if (companyName.includes(query) || cin.includes(query)) return true
         
-        // Partial company name match (contains)
-        if (companyName.includes(query) || query.includes(companyName)) return true
+        // Reverse partial matches
+        if (query.includes(companyName) || query.includes(cin)) return true
         
         return false
       })
@@ -83,10 +164,9 @@ serve(async (req) => {
         companyData = match
         console.log('Found matching company:', companyData.CompanyName, companyData.CIN)
       } else {
-        console.log('No exact match found, checking first few results:')
-        data.records.slice(0, 3).forEach((record, index) => {
-          console.log(`Record ${index + 1}: ${record.CompanyName} (${record.CIN})`)
-        })
+        // If no exact match, take the first result as a suggestion
+        companyData = searchResults.records[0]
+        console.log('No exact match, using first result:', companyData.CompanyName, companyData.CIN)
       }
     }
 
@@ -96,10 +176,18 @@ serve(async (req) => {
         JSON.stringify({ 
           error: 'Company not found',
           message: `No company found matching "${searchQuery}". Please check the company name or CIN and try again.`,
-          suggestions: data.records?.slice(0, 3).map(r => ({ 
+          suggestions: searchResults.records?.slice(0, 5).map(r => ({ 
             name: r.CompanyName, 
             cin: r.CIN 
-          })) || []
+          })) || [],
+          debug: {
+            totalRecordsInAPI: totalRecords,
+            searchQuery: cleanQuery,
+            sampleRecords: searchResults.records?.slice(0, 3).map(r => ({
+              name: r.CompanyName,
+              cin: r.CIN
+            })) || []
+          }
         }),
         { 
           status: 404, 
@@ -123,28 +211,28 @@ serve(async (req) => {
       financial: {
         authorizedCapital: parseFloat(companyData.AuthorizedCapital || '0') || 0,
         paidUpCapital: parseFloat(companyData.PaidupCapital || '0') || 0,
-        netWorth: 0, // Not available in this dataset
-        totalAssets: 0, // Not available in this dataset
-        totalLiabilities: 0, // Not available in this dataset
-        revenue: 0, // Not available in this dataset
+        netWorth: 0,
+        totalAssets: 0,
+        totalLiabilities: 0,
+        revenue: 0,
         charges: []
       },
-      directors: [], // Directors data requires separate MCA API calls - see note below
+      directors: [],
       compliance: {
-        lastFilingDate: 'N/A', // Not available in this dataset
-        annualReturnStatus: 'N/A', // Not available in this dataset
+        lastFilingDate: 'N/A',
+        annualReturnStatus: 'N/A',
         filings: []
       },
       contact: {
         registeredAddress: companyData.Registered_Office_Address || 'N/A',
-        email: 'N/A', // Not available in this dataset
-        website: 'N/A', // Not available in this dataset
-        phone: 'N/A' // Not available in this dataset
+        email: 'N/A',
+        website: 'N/A',
+        phone: 'N/A'
       },
       metadata: {
         datasetUsed: '4dbe5667-7b6b-41d7-82af-211562424d9a',
         searchQuery: searchQuery,
-        totalRecords: data.total || data.records?.length || 0,
+        totalRecords: totalRecords,
         rawData: companyData,
         directorsNote: "Directors data requires separate API calls to MCA director datasets or paid MCA services"
       }
