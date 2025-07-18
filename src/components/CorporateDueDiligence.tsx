@@ -100,11 +100,19 @@ export const CorporateDueDiligence = () => {
 
       if (functionError) {
         console.error('Function error:', functionError);
-        throw new Error(functionError.message || 'Failed to fetch corporate data');
+        // Handle the case where the function returns a proper error response
+        if (functionError.message.includes('non-2xx status code')) {
+          // This means the function ran but returned an error status (like 404)
+          // The actual error details should be in the response
+        } else {
+          throw new Error(functionError.message || 'Failed to fetch corporate data');
+        }
       }
 
-      if (data.error) {
-        throw new Error(data.error);
+      if (data?.error) {
+        // Handle specific business logic errors (like "company not found")
+        setError(data.message || data.error);
+        return;
       }
 
       setCorporateData(data);
