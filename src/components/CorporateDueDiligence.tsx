@@ -90,6 +90,7 @@ export const CorporateDueDiligence = () => {
     
     setIsSearching(true);
     setError(null);
+    setCorporateData(null); // Clear previous data
     
     try {
       console.log('Searching for:', searchQuery);
@@ -100,26 +101,42 @@ export const CorporateDueDiligence = () => {
 
       if (functionError) {
         console.error('Function error:', functionError);
-        // Handle the case where the function returns a proper error response
-        if (functionError.message.includes('non-2xx status code')) {
-          // This means the function ran but returned an error status (like 404)
-          // The actual error details should be in the response
-        } else {
-          throw new Error(functionError.message || 'Failed to fetch corporate data');
-        }
-      }
-
-      if (data?.error) {
-        // Handle specific business logic errors (like "company not found")
-        setError(data.message || data.error);
+        setError('Failed to search corporate data. Please try again.');
+        toast({
+          title: "Search Failed",
+          description: "Failed to search corporate data. Please try again.",
+          variant: "destructive",
+        });
         return;
       }
 
-      setCorporateData(data);
-      toast({
-        title: "Company Found",
-        description: `Successfully loaded data for ${data.identity.companyName}`,
-      });
+      // Check if the response contains an error (company not found, etc.)
+      if (!data || data.error) {
+        const errorMessage = data?.message || data?.error || 'Company not found';
+        setError(errorMessage);
+        toast({
+          title: "Company Not Found",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Ensure we have valid corporate data before setting it
+      if (data.identity && data.identity.companyName) {
+        setCorporateData(data);
+        toast({
+          title: "Company Found",
+          description: `Successfully loaded data for ${data.identity.companyName}`,
+        });
+      } else {
+        setError('Invalid data received from search');
+        toast({
+          title: "Invalid Data",
+          description: "The search returned invalid data. Please try again.",
+          variant: "destructive",
+        });
+      }
 
     } catch (error) {
       console.error('Search error:', error);
